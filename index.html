@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>mminis — Curadoria de Hot Wheels e Colecionáveis</title>
+<meta name="description" content="Curadoria de Hot Wheels para comprar com segurança. Vendedor mminis com 160+ avaliações 5 estrelas na Shopee. Melhores preços na Amazon, Shopee e Mercado Livre.">
+<link rel="canonical" href="https://marce1oinacio.github.io/mminis">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f9f7f4;--surface:#ffffff;--dark:#1a1a1a;--mid:#444;--muted:#888;--border:#e8e3dc;--accent:#c0392b;--accent-dk:#96281b;--accent-lt:#fdf0ee}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--dark);font-family:'DM Sans',sans-serif;font-size:16px;line-height:1.7;-webkit-font-smoothing:antialiased}
+img{max-width:100%;display:block}
+a{color:inherit;text-decoration:none}
+.container{max-width:1100px;margin:0 auto;padding:0 24px}
+.section{padding:72px 0}
+.section+.section{border-top:1px solid var(--border)}
+.section-label{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);font-weight:500;margin-bottom:10px}
+.section-title{font-family:'Playfair Display',serif;font-size:clamp(1.6rem,3vw,2.2rem);font-weight:700;line-height:1.2;margin-bottom:8px}
+.section-desc{color:var(--muted);font-size:.95rem;max-width:520px;margin-bottom:40px}
+
+/* HEADER */
+header{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.header-inner{display:flex;align-items:center;justify-content:space-between;height:64px}
+.logo{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--dark)}
+.logo span{color:var(--accent)}
+nav{display:flex;gap:28px;align-items:center}
+nav a{font-size:.88rem;color:var(--mid);transition:color .2s}
+nav a:hover{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#fff!important;padding:8px 18px;border-radius:6px;font-size:.82rem!important;font-weight:500!important;transition:background .2s!important}
+.nav-cta:hover{background:var(--accent-dk)!important}
+.hamburger{display:none;background:none;border:none;cursor:pointer;padding:4px}
+.hamburger span{display:block;width:22px;height:2px;background:var(--dark);margin:5px 0;transition:all .3s}
+
+/* HERO */
+.hero{background:var(--surface);padding:80px 0 72px;border-bottom:1px solid var(--border)}
+.hero-inner{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:.8rem;color:var(--accent);font-weight:500;letter-spacing:.1em;text-transform:uppercase;margin-bottom:20px}
+.hero-eyebrow::before{content:'';width:24px;height:2px;background:var(--accent)}
+.hero h1{font-family:'Playfair Display',serif;font-size:clamp(2rem,4vw,3rem);font-weight:700;line-height:1.15;margin-bottom:20px}
+.hero h1 em{color:var(--accent);font-style:normal}
+.hero-sub{color:var(--muted);font-size:1rem;line-height:1.7;margin-bottom:32px;max-width:440px}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:var(--accent-lt);border:1px solid #f5c5bf;border-radius:6px;padding:8px 14px;font-size:.82rem;color:var(--accent);font-weight:500;margin-bottom:28px}
+.hero-platforms{display:flex;flex-direction:column;gap:10px}
+.platform-btn{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;transition:all .2s;cursor:pointer;text-decoration:none;color:var(--dark)}
+.platform-btn:hover{border-color:var(--accent);box-shadow:0 4px 16px rgba(192,57,43,.08);transform:translateX(4px)}
+.platform-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.pi-amazon{background:#fff8e7}.pi-shopee{background:#fff0ea}.pi-ml{background:#fffbe6}
+.platform-info{flex:1}
+.platform-name{font-weight:600;font-size:.92rem}
+.platform-desc{font-size:.78rem;color:var(--muted);margin-top:1px}
+.platform-arrow{color:var(--muted);font-size:.9rem;transition:transform .2s}
+.platform-btn:hover .platform-arrow{transform:translateX(4px);color:var(--accent)}
+.hero-visual{background:linear-gradient(135deg,#1a0800,#2d0f00);border-radius:16px;padding:40px;display:flex;flex-direction:column;justify-content:space-between;min-height:360px;position:relative;overflow:hidden}
+.hero-visual::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(192,57,43,.3),transparent 70%);border-radius:50%}
+.visual-tag{display:inline-block;background:rgba(192,57,43,.3);border:1px solid rgba(192,57,43,.4);color:#ff8a7a;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;padding:5px 12px;border-radius:4px;width:fit-content}
+.visual-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;position:relative}
+.visual-stat{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:16px}
+.visual-stat-num{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;color:#fff;line-height:1}
+.visual-stat-label{font-size:.75rem;color:rgba(255,255,255,.45);margin-top:4px}
+.visual-big-emoji{position:absolute;bottom:-10px;right:-10px;font-size:5rem;opacity:.12;line-height:1}
+
+/* PRODUCTS */
+.products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px}
+.product-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:box-shadow .25s,transform .25s;display:flex;flex-direction:column}
+.product-card:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.08)}
+.product-img{width:100%;aspect-ratio:1;background:#f0ede8;display:flex;align-items:center;justify-content:center;font-size:3.5rem;overflow:hidden;position:relative}
+.product-img img{width:100%;height:100%;object-fit:cover}
+.product-source{position:absolute;top:10px;left:10px;background:var(--surface);border:1px solid var(--border);font-size:.7rem;font-weight:500;color:var(--mid);padding:3px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.06em}
+.product-body{padding:16px;flex:1;display:flex;flex-direction:column}
+.product-name{font-weight:600;font-size:.9rem;line-height:1.4;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.product-desc{font-size:.82rem;color:var(--muted);margin-bottom:14px;flex:1}
+.product-price{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;margin-bottom:12px}
+.product-price small{font-family:'DM Sans',sans-serif;font-size:.72rem;color:var(--muted);font-weight:400}
+.product-btn{display:block;text-align:center;background:var(--dark);color:#fff;padding:10px;border-radius:8px;font-size:.84rem;font-weight:500;transition:background .2s}
+.product-btn:hover{background:var(--accent);color:#fff}
+
+/* PLATFORMS */
+.platforms-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.plat-card{border:1px solid var(--border);border-radius:12px;padding:28px 24px;background:var(--surface);transition:all .2s;display:block}
+.plat-card:hover{border-color:var(--accent);box-shadow:0 8px 24px rgba(192,57,43,.08);transform:translateY(-2px)}
+.plat-logo{font-size:2rem;margin-bottom:16px}
+.plat-name{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;margin-bottom:6px}
+.plat-desc{font-size:.85rem;color:var(--muted);line-height:1.6;margin-bottom:20px}
+.plat-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px}
+.plat-tag{font-size:.72rem;padding:3px 8px;border-radius:4px;font-weight:500;background:var(--bg);color:var(--mid);border:1px solid var(--border)}
+.plat-link{font-size:.84rem;color:var(--accent);font-weight:500;display:flex;align-items:center;gap:6px}
+.plat-link::after{content:'→';transition:transform .2s}
+.plat-card:hover .plat-link::after{transform:translateX(4px)}
+
+/* ARTICLES */
+.articles-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:24px}
+.article-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:box-shadow .2s,transform .2s;display:block}
+.article-card:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.08)}
+.article-cover{background:linear-gradient(135deg,#1a0800,#3d1100);height:140px;display:flex;align-items:center;justify-content:center;font-size:3rem}
+.article-body{padding:20px}
+.article-category{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);font-weight:500;margin-bottom:8px}
+.article-title{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;line-height:1.4;margin-bottom:8px}
+.article-excerpt{font-size:.83rem;color:var(--muted);line-height:1.6;margin-bottom:14px}
+.article-meta{font-size:.75rem;color:var(--muted);display:flex;align-items:center;gap:6px}
+.article-meta::before{content:'→';color:var(--accent)}
+.article-empty{background:var(--surface);border:1px dashed var(--border);border-radius:12px;padding:32px 24px;text-align:center;color:var(--muted);font-size:.88rem;line-height:1.6}
+.article-empty strong{color:var(--mid);display:block;margin-bottom:6px;font-family:'Playfair Display',serif;font-size:1rem}
+
+/* ABOUT */
+.about-inner{display:grid;grid-template-columns:1fr 1.6fr;gap:64px;align-items:center}
+.about-visual{background:var(--dark);border-radius:16px;padding:36px;text-align:center;position:relative;overflow:hidden}
+.about-visual::after{content:'🚗';font-size:8rem;opacity:.06;position:absolute;bottom:-16px;right:-16px;line-height:1}
+.about-avatar{width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto 16px}
+.about-name{color:#fff;font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;margin-bottom:4px}
+.about-role{color:rgba(255,255,255,.4);font-size:.78rem;margin-bottom:20px}
+.about-stats{display:flex;gap:12px;justify-content:center}
+.about-stat{flex:1;background:rgba(255,255,255,.06);border-radius:8px;padding:12px 8px}
+.about-stat-num{color:var(--accent);font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700}
+.about-stat-label{color:rgba(255,255,255,.35);font-size:.68rem;margin-top:2px}
+.about-text p{color:var(--mid);margin-bottom:16px;font-size:.95rem;line-height:1.8}
+.about-text p:last-child{margin-bottom:0}
+.about-text strong{color:var(--dark)}
+
+/* FOOTER */
+footer{background:var(--dark);color:rgba(255,255,255,.55);padding:48px 0 32px}
+.footer-inner{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:40px;padding-bottom:32px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:24px}
+.footer-logo{font-family:'Playfair Display',serif;font-size:1.2rem;color:#fff;margin-bottom:10px}
+.footer-logo span{color:var(--accent)}
+.footer-about{font-size:.82rem;line-height:1.7;max-width:260px}
+.footer-col-title{color:rgba(255,255,255,.7);font-size:.78rem;font-weight:500;text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px}
+.footer-links{list-style:none;display:flex;flex-direction:column;gap:8px}
+.footer-links a{font-size:.83rem;transition:color .2s}
+.footer-links a:hover{color:rgba(255,255,255,.9)}
+.footer-bottom{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}
+.footer-copy{font-size:.78rem}
+.footer-disclaimer{font-size:.75rem;max-width:500px;line-height:1.6;opacity:.7}
+
+/* RESPONSIVE */
+@media(max-width:900px){.hero-inner{grid-template-columns:1fr}.hero-visual{display:none}.platforms-grid{grid-template-columns:1fr}.about-inner{grid-template-columns:1fr}.footer-inner{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.section{padding:48px 0}nav{display:none}nav.open{display:flex;flex-direction:column;position:fixed;inset:64px 0 0 0;background:var(--surface);padding:32px 24px;gap:20px;align-items:flex-start;z-index:99;border-top:1px solid var(--border)}nav.open a{font-size:1.1rem}.hamburger{display:block}.products-grid{grid-template-columns:repeat(2,1fr);gap:12px}.articles-grid{grid-template-columns:1fr}.footer-inner{grid-template-columns:1fr;gap:24px}.footer-bottom{flex-direction:column}.hero{padding:48px 0}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.hero h1,.hero-sub,.hero-badge,.hero-platforms{animation:fadeUp .6s ease both}
+.hero-sub{animation-delay:.1s}.hero-badge{animation-delay:.15s}.hero-platforms{animation-delay:.2s}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container header-inner">
+    <a class="logo" href="#">m<span>minis</span></a>
+    <nav id="nav">
+      <a href="#produtos">Produtos</a>
+      <a href="#plataformas">Onde Comprar</a>
+      <a href="#artigos">Artigos</a>
+      <a href="#sobre">Sobre</a>
+      <a href="#plataformas" class="nav-cta">Ver Ofertas</a>
+    </nav>
+    <button class="hamburger" id="hamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container hero-inner">
+    <div>
+      <div class="hero-eyebrow">Curadoria de colecionáveis</div>
+      <h1>Hot Wheels que<br>valem o seu <em>dinheiro</em></h1>
+      <div class="hero-badge">⭐ Vendedor com 160+ avaliações 5 estrelas</div>
+      <p class="hero-sub">Selecionei os melhores modelos disponíveis online — com segurança, preço justo e nas plataformas certas. Sem perder tempo caçando nas lojas.</p>
+      <div class="hero-platforms">
+        <!-- EDITE: substitua os href pelos seus links de afiliado -->
+        <a href="SEU_LINK_AFILIADO_AMAZON" target="_blank" rel="nofollow noopener sponsored" class="platform-btn">
+          <div class="platform-icon pi-amazon">📦</div>
+          <div class="platform-info"><div class="platform-name">Amazon Brasil</div><div class="platform-desc">Mais segura · frete Prime · garantia</div></div>
+          <span class="platform-arrow">→</span>
+        </a>
+        <a href="SEU_LINK_AFILIADO_SHOPEE" target="_blank" rel="nofollow noopener sponsored" class="platform-btn">
+          <div class="platform-icon pi-shopee">🛍️</div>
+          <div class="platform-info"><div class="platform-name">Shopee</div><div class="platform-desc">Melhor preço · maior variedade</div></div>
+          <span class="platform-arrow">→</span>
+        </a>
+        <a href="SEU_LINK_AFILIADO_ML" target="_blank" rel="nofollow noopener sponsored" class="platform-btn">
+          <div class="platform-icon pi-ml">🏷️</div>
+          <div class="platform-info"><div class="platform-name">Mercado Livre</div><div class="platform-desc">Modelos raros e descontinuados</div></div>
+          <span class="platform-arrow">→</span>
+        </a>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <span class="visual-tag">Curador verificado</span>
+      <div class="visual-stat-grid">
+        <div class="visual-stat"><div class="visual-stat-num">160+</div><div class="visual-stat-label">Avaliações 5★</div></div>
+        <div class="visual-stat"><div class="visual-stat-num">3 anos</div><div class="visual-stat-label">No mercado</div></div>
+        <div class="visual-stat"><div class="visual-stat-num">3</div><div class="visual-stat-label">Plataformas</div></div>
+        <div class="visual-stat"><div class="visual-stat-num">100%</div><div class="visual-stat-label">Satisfação</div></div>
+        <div class="visual-big-emoji">🚗</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRODUTOS
+     ══════════════════════════════════════════
+     COMO ADICIONAR UM PRODUTO:
+     Copie o bloco PRODUTO/PRODUTO e cole antes
+     de "FIM PRODUTOS". Edite nome, preço, link.
+     Para foto real: <img src="URL" alt="nome">
+     ══════════════════════════════════════════ -->
+<section class="section" id="produtos">
+  <div class="container">
+    <div class="section-label">Seleção da semana</div>
+    <div class="section-title">Produtos em Destaque</div>
+    <p class="section-desc">Modelos que acompanhei de perto e recomendo com conhecimento de causa.</p>
+    <div class="products-grid">
+
+      <!-- PRODUTO -->
+      <div class="product-card">
+        <div class="product-img">
+          🏎️
+          <div class="product-source">Shopee</div>
+        </div>
+        <div class="product-body">
+          <div class="product-name">Nome do Produto — edite aqui</div>
+          <div class="product-desc">Série, número, destaque especial do modelo.</div>
+          <div class="product-price">R$ 00,00 <small>+ frete</small></div>
+          <a href="SEU_LINK" target="_blank" rel="nofollow noopener sponsored" class="product-btn">Ver produto →</a>
+        </div>
+      </div>
+      <!-- /PRODUTO -->
+
+      <!-- PRODUTO -->
+      <div class="product-card">
+        <div class="product-img">
+          🚗
+          <div class="product-source">Amazon</div>
+        </div>
+        <div class="product-body">
+          <div class="product-name">Nome do Produto — edite aqui</div>
+          <div class="product-desc">Série, número, destaque especial do modelo.</div>
+          <div class="product-price">R$ 00,00 <small>+ frete</small></div>
+          <a href="SEU_LINK" target="_blank" rel="nofollow noopener sponsored" class="product-btn">Ver produto →</a>
+        </div>
+      </div>
+      <!-- /PRODUTO -->
+
+      <!-- PRODUTO -->
+      <div class="product-card">
+        <div class="product-img">
+          🏁
+          <div class="product-source">Mercado Livre</div>
+        </div>
+        <div class="product-body">
+          <div class="product-name">Nome do Produto — edite aqui</div>
+          <div class="product-desc">Série, número, destaque especial do modelo.</div>
+          <div class="product-price">R$ 00,00 <small>+ frete</small></div>
+          <a href="SEU_LINK" target="_blank" rel="nofollow noopener sponsored" class="product-btn">Ver produto →</a>
+        </div>
+      </div>
+      <!-- /PRODUTO -->
+
+      <!-- FIM PRODUTOS -->
+    </div>
+  </div>
+</section>
+
+<!-- PLATAFORMAS -->
+<section class="section" id="plataformas">
+  <div class="container">
+    <div class="section-label">Onde comprar</div>
+    <div class="section-title">Plataformas Recomendadas</div>
+    <p class="section-desc">Em ordem de preferência — baseado em anos comprando e vendendo nessas plataformas.</p>
+    <div class="platforms-grid">
+      <a href="SEU_LINK_AFILIADO_AMAZON" target="_blank" rel="nofollow noopener sponsored" class="plat-card">
+        <div class="plat-logo">📦</div>
+        <div class="plat-name">Amazon Brasil</div>
+        <div class="plat-desc">Minha primeira recomendação. Política de devolução sem burocracia, garantia de autenticidade e frete Prime.</div>
+        <div class="plat-tags"><span class="plat-tag">Mais segura</span><span class="plat-tag">Frete Prime</span><span class="plat-tag">Devolução fácil</span></div>
+        <span class="plat-link">Ver Hot Wheels na Amazon</span>
+      </a>
+      <a href="SEU_LINK_AFILIADO_SHOPEE" target="_blank" rel="nofollow noopener sponsored" class="plat-card">
+        <div class="plat-logo">🛍️</div>
+        <div class="plat-name">Shopee</div>
+        <div class="plat-desc">Melhor custo-benefício. Maior variedade e preços até 30% menores. Sei exatamente como separar os bons vendedores dos ruins.</div>
+        <div class="plat-tags"><span class="plat-tag">Melhor preço</span><span class="plat-tag">Alta variedade</span><span class="plat-tag">Frete econômico</span></div>
+        <span class="plat-link">Ver Hot Wheels na Shopee</span>
+      </a>
+      <a href="SEU_LINK_AFILIADO_ML" target="_blank" rel="nofollow noopener sponsored" class="plat-card">
+        <div class="plat-logo">🏷️</div>
+        <div class="plat-name">Mercado Livre</div>
+        <div class="plat-desc">Para modelos raros, descontinuados ou importados que não existem nas outras plataformas. Os preços são mais altos, mas às vezes não há outra saída.</div>
+        <div class="plat-tags"><span class="plat-tag">Modelos raros</span><span class="plat-tag">Treasure Hunts</span><span class="plat-tag">Importados</span></div>
+        <span class="plat-link">Ver Hot Wheels no ML</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ARTIGOS
+     ══════════════════════════════════════════
+     COMO ADICIONAR UM ARTIGO:
+     1. Crie o arquivo artigo-nome.html
+     2. Copie o bloco ARTIGO/ARTIGO abaixo
+     3. Descomente-o (remova <!-- e -->)
+     4. Edite título, trecho, data e href
+     5. Apague o bloco article-empty
+     ══════════════════════════════════════════ -->
+<section class="section" id="artigos">
+  <div class="container">
+    <div class="section-label">Conteúdo</div>
+    <div class="section-title">Guias e Artigos</div>
+    <p class="section-desc">Conhecimento prático — onde comprar, como identificar raridades e não cair em armadilhas.</p>
+    <div class="articles-grid">
+
+      <div class="article-empty">
+        <strong>Em breve</strong>
+        Primeiros artigos sendo preparados.<br>Volte em breve ou siga nas redes.
+      </div>
+
+      <!-- ARTIGO (descomente quando publicar)
+      <a href="artigo-onde-comprar-hot-wheels.html" class="article-card">
+        <div class="article-cover">🏎️</div>
+        <div class="article-body">
+          <div class="article-category">Guia de compra</div>
+          <div class="article-title">Onde Comprar Hot Wheels Online com Segurança</div>
+          <div class="article-excerpt">Amazon, Shopee ou ML? Após 3 anos comprando e vendendo, explico qual usar em cada situação.</div>
+          <div class="article-meta">12/03/2026 · 5 min</div>
+        </div>
+      </a>
+      -->
+      <!-- /ARTIGO -->
+
+      <!-- FIM ARTIGOS -->
+    </div>
+  </div>
+</section>
+
+<!-- SOBRE -->
+<section class="section" id="sobre">
+  <div class="container about-inner">
+    <div class="about-visual">
+      <div class="about-avatar">🏎️</div>
+      <div class="about-name">mminis</div>
+      <div class="about-role">Colecionador & Curador · Loja Shopee: mminis</div>
+      <div class="about-stats">
+        <div class="about-stat"><div class="about-stat-num">160+</div><div class="about-stat-label">Avaliações</div></div>
+        <div class="about-stat"><div class="about-stat-num">5★</div><div class="about-stat-label">Nota</div></div>
+        <div class="about-stat"><div class="about-stat-num">3 anos</div><div class="about-stat-label">Experiência</div></div>
+      </div>
+    </div>
+    <div class="about-text">
+      <!-- EDITE: seu texto pessoal -->
+      <p>Comecei como caçador de Hot Wheels — aquelas idas às lojas cedo da manhã esperando a reposição, farejando raridades nas prateleiras. <strong>Ao longo de 3 anos, acumulei mais de 160 transações com avaliação 5 estrelas</strong> na minha loja <strong>mminis</strong> na Shopee.</p>
+      <p>Com o tempo, percebi que o maior problema dos colecionadores não era encontrar os carrinhos — era não saber onde comprar online com segurança, quais vendedores confiar e quando um preço é justo ou um abuso.</p>
+      <p>O Pista Certa nasceu pra resolver isso. <strong>Aqui você encontra curadoria real, baseada em experiência prática</strong> — não em algoritmos.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div>
+        <div class="footer-logo">m<span>minis</span></div>
+        <p class="footer-about">Curadoria de Hot Wheels e colecionáveis para comprar online com segurança. Loja oficial na Shopee: mminis.</p>
+      </div>
+      <div>
+        <div class="footer-col-title">Navegação</div>
+        <ul class="footer-links">
+          <li><a href="#produtos">Produtos</a></li>
+          <li><a href="#plataformas">Onde Comprar</a></li>
+          <li><a href="#artigos">Artigos</a></li>
+          <li><a href="#sobre">Sobre</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Plataformas</div>
+        <ul class="footer-links">
+          <li><a href="SEU_LINK_AFILIADO_AMAZON" rel="nofollow noopener sponsored">Amazon Brasil</a></li>
+          <li><a href="SEU_LINK_AFILIADO_SHOPEE" rel="nofollow noopener sponsored">Shopee</a></li>
+          <li><a href="SEU_LINK_AFILIADO_ML" rel="nofollow noopener sponsored">Mercado Livre</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span class="footer-copy">© 2026 mminis. Todos os direitos reservados.</span>
+      <p class="footer-disclaimer">Este site contém links de afiliados. Ao comprar através dos nossos links, podemos receber uma comissão sem custo adicional para você.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  const h = document.getElementById('hamburger');
+  const n = document.getElementById('nav');
+  h.addEventListener('click', () => n.classList.toggle('open'));
+  n.querySelectorAll('a').forEach(a => a.addEventListener('click', () => n.classList.remove('open')));
+</script>
+</body>
+</html>
