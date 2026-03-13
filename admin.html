@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>mminis — Painel Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f9f7f4;--surface:#fff;--dark:#1a1a1a;--mid:#444;--muted:#888;--border:#e8e3dc;--accent:#c0392b;--accent-lt:#fdf0ee;--green:#16a34a;--green-lt:#f0fdf4}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--dark);font-family:'DM Sans',sans-serif;min-height:100vh}
+a{color:inherit;text-decoration:none}
+
+/* LAYOUT */
+.app{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+
+/* SIDEBAR */
+.sidebar{background:var(--dark);padding:32px 24px;display:flex;flex-direction:column;gap:8px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.sidebar-logo{font-family:'Playfair Display',serif;font-size:1.2rem;color:#fff;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sidebar-logo span{color:var(--accent)}
+.sidebar-section{font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.3);margin:16px 0 6px;padding:0 8px}
+.nav-btn{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:none;background:none;color:rgba(255,255,255,.55);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.88rem;width:100%;text-align:left;transition:all .2s}
+.nav-btn:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav-btn.active{background:rgba(192,57,43,.2);color:#ff8a7a}
+.nav-btn .icon{font-size:1rem;width:20px;text-align:center}
+
+/* MAIN */
+.main{padding:40px 48px;overflow-y:auto}
+.page{display:none}
+.page.active{display:block}
+
+/* PAGE HEADER */
+.page-header{margin-bottom:36px}
+.page-title{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;margin-bottom:6px}
+.page-desc{color:var(--muted);font-size:.92rem}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:20px}
+.card-title{font-weight:600;font-size:.95rem;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+
+/* FORM */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group.full{grid-column:1/-1}
+label{font-size:.8rem;font-weight:500;color:var(--mid);letter-spacing:.02em}
+input,select,textarea{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:.9rem;color:var(--dark);outline:none;transition:border-color .2s;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+textarea{resize:vertical;min-height:80px}
+select{cursor:pointer}
+
+/* IMAGE UPLOAD */
+.img-upload{border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.img-upload:hover{border-color:var(--accent);background:var(--accent-lt)}
+.img-upload input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.img-upload-icon{font-size:2rem;margin-bottom:8px}
+.img-upload-text{font-size:.85rem;color:var(--muted)}
+.img-upload-text strong{color:var(--accent)}
+.img-preview{width:100%;max-height:160px;object-fit:contain;border-radius:8px;margin-top:12px;display:none}
+
+/* BUTTONS */
+.btn{padding:11px 22px;border-radius:8px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:.88rem;cursor:pointer;border:none;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#a93226}
+.btn-secondary{background:var(--bg);color:var(--mid);border:1px solid var(--border)}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+.btn-green{background:var(--green);color:#fff}
+.btn-green:hover{background:#15803d}
+.btn-row{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
+
+/* OUTPUT */
+.output-box{background:#1a1a1a;border-radius:10px;padding:20px;position:relative;margin-top:16px}
+.output-box pre{color:#e8e8e8;font-family:'Courier New',monospace;font-size:.8rem;line-height:1.7;white-space:pre-wrap;word-break:break-all}
+.copy-btn{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);padding:5px 12px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+.copy-btn:hover{background:rgba(255,255,255,.2);color:#fff}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--green);color:#fff;padding:12px 20px;border-radius:10px;font-size:.88rem;font-weight:500;transform:translateY(80px);opacity:0;transition:all .3s;z-index:999;display:flex;align-items:center;gap:8px}
+.toast.show{transform:translateY(0);opacity:1}
+
+/* PREVIEW CARD */
+.preview-wrap{display:flex;justify-content:center;margin-top:20px}
+.preview-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;width:240px;font-family:'DM Sans',sans-serif}
+.preview-img{width:100%;aspect-ratio:1;background:#f0ede8;display:flex;align-items:center;justify-content:center;font-size:3rem;overflow:hidden;position:relative}
+.preview-img img{width:100%;height:100%;object-fit:cover}
+.preview-source{position:absolute;top:8px;left:8px;background:#fff;border:1px solid #e8e3dc;font-size:.65rem;font-weight:500;color:#444;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.05em}
+.preview-body{padding:14px}
+.preview-name{font-weight:600;font-size:.85rem;line-height:1.4;margin-bottom:6px}
+.preview-desc{font-size:.78rem;color:var(--muted);margin-bottom:12px}
+.preview-price{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;margin-bottom:10px}
+.preview-btn{display:block;text-align:center;background:#1a1a1a;color:#fff;padding:9px;border-radius:8px;font-size:.8rem;font-weight:500}
+
+/* PRODUCT LIST */
+.product-list{display:flex;flex-direction:column;gap:12px}
+.product-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;display:flex;align-items:center;gap:16px}
+.product-item-emoji{font-size:1.8rem;width:44px;text-align:center;flex-shrink:0}
+.product-item-info{flex:1}
+.product-item-name{font-weight:600;font-size:.9rem;margin-bottom:2px}
+.product-item-meta{font-size:.78rem;color:var(--muted)}
+.product-item-actions{display:flex;gap:8px}
+.btn-icon{background:none;border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:.8rem;color:var(--muted);transition:all .2s}
+.btn-icon:hover{border-color:var(--accent);color:var(--accent)}
+.btn-icon.del:hover{border-color:#dc2626;color:#dc2626}
+
+/* BADGE */
+.badge{display:inline-block;font-size:.7rem;padding:2px 8px;border-radius:4px;font-weight:500}
+.badge-shopee{background:#fff0ea;color:#e25316}
+.badge-amazon{background:#fff8e7;color:#d97706}
+.badge-ml{background:#fffbe6;color:#b45309}
+
+/* INSTRUCTIONS */
+.step-list{display:flex;flex-direction:column;gap:14px}
+.step{display:flex;gap:14px;align-items:flex-start}
+.step-num{background:var(--accent);color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;flex-shrink:0;margin-top:2px}
+.step-content{flex:1}
+.step-title{font-weight:600;font-size:.9rem;margin-bottom:3px}
+.step-desc{font-size:.83rem;color:var(--muted);line-height:1.6}
+.step-desc code{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:.78rem;color:var(--accent)}
+
+.info-box{background:var(--accent-lt);border:1px solid #f5c5bf;border-radius:10px;padding:16px 18px;font-size:.85rem;color:#8b1a0e;margin-bottom:20px;display:flex;gap:10px;align-items:flex-start}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .app{grid-template-columns:1fr}
+  .sidebar{position:relative;height:auto;flex-direction:row;flex-wrap:wrap;padding:16px}
+  .sidebar-section{display:none}
+  .main{padding:24px 16px}
+  .form-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">m<span>minis</span> · Admin</div>
+    <div class="sidebar-section">Conteúdo</div>
+    <button class="nav-btn active" onclick="showPage('produtos')" id="btn-produtos">
+      <span class="icon">🏎️</span> Produtos
+    </button>
+    <button class="nav-btn" onclick="showPage('artigos')" id="btn-artigos">
+      <span class="icon">📝</span> Artigos
+    </button>
+    <div class="sidebar-section">Configuração</div>
+    <button class="nav-btn" onclick="showPage('links')" id="btn-links">
+      <span class="icon">🔗</span> Links Afiliados
+    </button>
+    <button class="nav-btn" onclick="showPage('instrucoes')" id="btn-instrucoes">
+      <span class="icon">📖</span> Como usar
+    </button>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- ═══════════════════════════════════════
+         PÁGINA: PRODUTOS
+    ═══════════════════════════════════════ -->
+    <div class="page active" id="page-produtos">
+      <div class="page-header">
+        <div class="page-title">Adicionar Produto</div>
+        <p class="page-desc">Preencha o formulário e copie o código gerado para o seu <code>index.html</code>.</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+
+        <!-- FORMULÁRIO -->
+        <div>
+          <div class="card">
+            <div class="card-title">📋 Dados do Produto</div>
+            <div class="form-grid">
+              <div class="form-group full">
+                <label>NOME DO PRODUTO</label>
+                <input type="text" id="p-nome" placeholder="Ex: Hot Wheels Ferrari SF90 Stradale" oninput="atualizarPreview()">
+              </div>
+              <div class="form-group full">
+                <label>DESCRIÇÃO CURTA</label>
+                <input type="text" id="p-desc" placeholder="Ex: Série Car Culture · Modelo 2025" oninput="atualizarPreview()">
+              </div>
+              <div class="form-group">
+                <label>PREÇO</label>
+                <input type="text" id="p-preco" placeholder="Ex: R$ 49,90" oninput="atualizarPreview()">
+              </div>
+              <div class="form-group">
+                <label>PLATAFORMA</label>
+                <select id="p-plataforma" onchange="atualizarPreview()">
+                  <option value="Shopee">Shopee</option>
+                  <option value="Amazon">Amazon</option>
+                  <option value="Mercado Livre">Mercado Livre</option>
+                </select>
+              </div>
+              <div class="form-group full">
+                <label>LINK DO PRODUTO (afiliado)</label>
+                <input type="url" id="p-link" placeholder="https://..." oninput="atualizarPreview()">
+              </div>
+              <div class="form-group full">
+                <label>FOTO DO PRODUTO</label>
+                <div class="img-upload" id="imgUploadArea">
+                  <input type="file" accept="image/*" id="p-foto" onchange="carregarFoto(this)">
+                  <div class="img-upload-icon">📷</div>
+                  <div class="img-upload-text"><strong>Clique ou arraste</strong> a foto aqui<br><span style="font-size:.75rem">JPG, PNG, WEBP</span></div>
+                  <img class="img-preview" id="imgPreview" alt="preview">
+                </div>
+                <input type="url" id="p-foto-url" placeholder="Ou cole a URL da imagem (opcional)" oninput="atualizarPreview()" style="margin-top:8px">
+              </div>
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-primary" onclick="gerarCodigo()">⚡ Gerar código</button>
+              <button class="btn btn-secondary" onclick="limparForm()">Limpar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- PREVIEW + OUTPUT -->
+        <div>
+          <div class="card">
+            <div class="card-title">👁️ Preview do Card</div>
+            <div class="preview-wrap">
+              <div class="preview-card">
+                <div class="preview-img" id="prev-img">
+                  <span id="prev-emoji">🏎️</span>
+                  <img id="prev-foto" style="display:none;width:100%;height:100%;object-fit:cover" alt="">
+                  <div class="preview-source" id="prev-source">Shopee</div>
+                </div>
+                <div class="preview-body">
+                  <div class="preview-name" id="prev-nome">Nome do produto</div>
+                  <div class="preview-desc" id="prev-desc">Descrição aparece aqui</div>
+                  <div class="preview-price" id="prev-preco">R$ 0,00</div>
+                  <div class="preview-btn">Ver produto →</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" id="output-card" style="display:none">
+            <div class="card-title">📋 Código gerado — copie e cole</div>
+            <div class="output-box">
+              <pre id="output-code"></pre>
+              <button class="copy-btn" onclick="copiarCodigo()">Copiar</button>
+            </div>
+            <div class="info-box" style="margin-top:16px;margin-bottom:0">
+              ℹ️ Cole este bloco no seu <code>index.html</code>, antes do comentário <code>&lt;!-- FIM PRODUTOS --&gt;</code>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         PÁGINA: ARTIGOS
+    ═══════════════════════════════════════ -->
+    <div class="page" id="page-artigos">
+      <div class="page-header">
+        <div class="page-title">Adicionar Artigo</div>
+        <p class="page-desc">Gere o card de artigo para inserir no site e o template do artigo completo.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">📝 Dados do Artigo</div>
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>TÍTULO DO ARTIGO</label>
+            <input type="text" id="a-titulo" placeholder="Ex: Onde Comprar Hot Wheels Online com Segurança">
+          </div>
+          <div class="form-group">
+            <label>CATEGORIA</label>
+            <select id="a-categoria">
+              <option>Guia de compra</option>
+              <option>Review</option>
+              <option>Comparativo</option>
+              <option>Colecionismo</option>
+              <option>Raridades</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>DATA DE PUBLICAÇÃO</label>
+            <input type="date" id="a-data">
+          </div>
+          <div class="form-group full">
+            <label>TRECHO (resumo de 1–2 linhas)</label>
+            <textarea id="a-trecho" placeholder="Ex: Amazon, Shopee ou ML? Após 3 anos comprando e vendendo, explico qual usar em cada situação."></textarea>
+          </div>
+          <div class="form-group full">
+            <label>NOME DO ARQUIVO HTML</label>
+            <input type="text" id="a-arquivo" placeholder="Ex: artigo-onde-comprar-hot-wheels.html">
+          </div>
+          <div class="form-group">
+            <label>EMOJI DO COVER</label>
+            <input type="text" id="a-emoji" placeholder="🏎️" maxlength="2" value="🏎️">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="gerarArtigo()">⚡ Gerar código do card</button>
+        </div>
+      </div>
+      <div class="card" id="output-artigo-card" style="display:none">
+        <div class="card-title">📋 Código do card — cole no index.html</div>
+        <div class="output-box">
+          <pre id="output-artigo-code"></pre>
+          <button class="copy-btn" onclick="copiarArtigoCode()">Copiar</button>
+        </div>
+        <div class="info-box" style="margin-top:16px;margin-bottom:0">
+          ℹ️ Cole antes de <code>&lt;!-- FIM ARTIGOS --&gt;</code> e apague o bloco <code>article-empty</code> se for o primeiro artigo.
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         PÁGINA: LINKS AFILIADOS
+    ═══════════════════════════════════════ -->
+    <div class="page" id="page-links">
+      <div class="page-header">
+        <div class="page-title">Links de Afiliados</div>
+        <p class="page-desc">Salve seus links de afiliado aqui para consulta rápida na hora de adicionar produtos.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">🔗 Seus Links de Afiliado</div>
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>AMAZON — Link de busca afiliado (Hot Wheels)</label>
+            <input type="url" id="link-amazon" placeholder="https://amzn.to/..." oninput="salvarLinks()">
+          </div>
+          <div class="form-group full">
+            <label>SHOPEE — Link da sua loja mminis</label>
+            <input type="url" id="link-shopee" placeholder="https://shopee.com.br/mminis" oninput="salvarLinks()">
+          </div>
+          <div class="form-group full">
+            <label>MERCADO LIVRE — Link de busca afiliado</label>
+            <input type="url" id="link-ml" placeholder="https://mercadolivre.com.br/afiliados/..." oninput="salvarLinks()">
+          </div>
+        </div>
+        <p style="font-size:.78rem;color:var(--muted);margin-top:12px">✅ Salvos automaticamente neste navegador.</p>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         PÁGINA: INSTRUÇÕES
+    ═══════════════════════════════════════ -->
+    <div class="page" id="page-instrucoes">
+      <div class="page-header">
+        <div class="page-title">Como usar</div>
+        <p class="page-desc">Fluxo completo para adicionar produtos e artigos ao site mminis.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🏎️ Adicionar um produto novo</div>
+        <div class="step-list">
+          <div class="step"><div class="step-num">1</div><div class="step-content"><div class="step-title">Abra este painel</div><div class="step-desc">Dê dois cliques no arquivo <code>admin.html</code> no seu computador. Ele abre no navegador, sem precisar de internet.</div></div></div>
+          <div class="step"><div class="step-num">2</div><div class="step-content"><div class="step-title">Preencha o formulário</div><div class="step-desc">Nome, descrição, preço, plataforma e link do afiliado. Para a foto: ou faz upload da imagem do produto, ou cola a URL da foto.</div></div></div>
+          <div class="step"><div class="step-num">3</div><div class="step-content"><div class="step-title">Clique em "Gerar código"</div><div class="step-desc">O código HTML do card aparece na tela. Clique em <strong>Copiar</strong>.</div></div></div>
+          <div class="step"><div class="step-num">4</div><div class="step-content"><div class="step-title">Cole no GitHub</div><div class="step-desc">Abra <code>github.com/Marce1oInacio/mminis</code>, clique no <code>index.html</code>, depois no lápis ✏️. Encontre <code>&lt;!-- FIM PRODUTOS --&gt;</code> e cole o código antes dessa linha.</div></div></div>
+          <div class="step"><div class="step-num">5</div><div class="step-content"><div class="step-title">Salve</div><div class="step-desc">Clique em <strong>Commit changes</strong>. Em ~30 segundos o produto aparece no site.</div></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📝 Adicionar um artigo novo</div>
+        <div class="step-list">
+          <div class="step"><div class="step-num">1</div><div class="step-content"><div class="step-title">Escreva o artigo</div><div class="step-desc">Crie um novo arquivo <code>artigo-nome.html</code> no GitHub (botão Add file → Create new file). Use o rascunho do arquivo <code>artigo-01-onde-comprar-hot-wheels.md</code> como base.</div></div></div>
+          <div class="step"><div class="step-num">2</div><div class="step-content"><div class="step-title">Gere o card</div><div class="step-desc">Na aba "Artigos" deste painel, preencha o formulário e gere o código do card de preview.</div></div></div>
+          <div class="step"><div class="step-num">3</div><div class="step-content"><div class="step-title">Cole no index.html</div><div class="step-desc">Mesmo processo dos produtos — cole antes de <code>&lt;!-- FIM ARTIGOS --&gt;</code>. Na primeira publicação, apague também o bloco <code>article-empty</code>.</div></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">💡 Dicas rápidas</div>
+        <div class="step-list">
+          <div class="step"><div class="step-num">✓</div><div class="step-content"><div class="step-title">Foto do produto</div><div class="step-desc">Baixe a foto da Shopee/Amazon, salve na pasta do projeto e use o upload. Ou cole a URL direto da loja — sem precisar baixar nada.</div></div></div>
+          <div class="step"><div class="step-num">✓</div><div class="step-content"><div class="step-title">Remover produto</div><div class="step-desc">No GitHub, edite o <code>index.html</code> e apague o bloco entre <code>&lt;!-- PRODUTO --&gt;</code> e <code>&lt;!-- /PRODUTO --&gt;</code> correspondente.</div></div></div>
+          <div class="step"><div class="step-num">✓</div><div class="step-content"><div class="step-title">Atualizar preço</div><div class="step-desc">Edite o <code>index.html</code> no GitHub, encontre o nome do produto (Ctrl+F) e altere só a linha do preço.</div></div></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">✅ Copiado com sucesso!</div>
+
+<script>
+// ─── NAVEGAÇÃO ──────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.getElementById('btn-' + id).classList.add('active');
+}
+
+// ─── PREVIEW ────────────────────────────────────────
+function atualizarPreview() {
+  const nome    = document.getElementById('p-nome').value    || 'Nome do produto';
+  const desc    = document.getElementById('p-desc').value    || 'Descrição aparece aqui';
+  const preco   = document.getElementById('p-preco').value   || 'R$ 0,00';
+  const plat    = document.getElementById('p-plataforma').value;
+  const fotoUrl = document.getElementById('p-foto-url').value;
+
+  document.getElementById('prev-nome').textContent   = nome;
+  document.getElementById('prev-desc').textContent   = desc;
+  document.getElementById('prev-preco').textContent  = preco;
+  document.getElementById('prev-source').textContent = plat;
+
+  if (fotoUrl) {
+    document.getElementById('prev-foto').src = fotoUrl;
+    document.getElementById('prev-foto').style.display = 'block';
+    document.getElementById('prev-emoji').style.display = 'none';
+  }
+}
+
+// ─── FOTO UPLOAD ────────────────────────────────────
+let fotoBase64 = null;
+function carregarFoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    fotoBase64 = e.target.result;
+    const preview = document.getElementById('imgPreview');
+    preview.src = fotoBase64;
+    preview.style.display = 'block';
+    // atualiza preview card
+    document.getElementById('prev-foto').src = fotoBase64;
+    document.getElementById('prev-foto').style.display = 'block';
+    document.getElementById('prev-emoji').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+// ─── GERAR CÓDIGO PRODUTO ───────────────────────────
+function gerarCodigo() {
+  const nome  = document.getElementById('p-nome').value.trim();
+  const desc  = document.getElementById('p-desc').value.trim();
+  const preco = document.getElementById('p-preco').value.trim();
+  const plat  = document.getElementById('p-plataforma').value;
+  const link  = document.getElementById('p-link').value.trim() || '#';
+  const url   = document.getElementById('p-foto-url').value.trim();
+
+  if (!nome) { alert('Preencha o nome do produto.'); return; }
+
+  // decide o conteúdo da imagem
+  let imgContent;
+  if (fotoBase64) {
+    imgContent = `          <img src="${fotoBase64}" alt="${escHtml(nome)}" style="width:100%;height:100%;object-fit:cover">`;
+  } else if (url) {
+    imgContent = `          <img src="${escHtml(url)}" alt="${escHtml(nome)}" style="width:100%;height:100%;object-fit:cover">`;
+  } else {
+    const emojis = { 'Shopee': '🏎️', 'Amazon': '📦', 'Mercado Livre': '🏷️' };
+    imgContent = `          ${emojis[plat] || '🏎️'}`;
+  }
+
+  const code = `      <!-- PRODUTO -->
+      <div class="product-card">
+        <div class="product-img">
+${imgContent}
+          <div class="product-source">${escHtml(plat)}</div>
+        </div>
+        <div class="product-body">
+          <div class="product-name">${escHtml(nome)}</div>
+          <div class="product-desc">${escHtml(desc)}</div>
+          <div class="product-price">${escHtml(preco)}</div>
+          <a href="${escHtml(link)}" target="_blank" rel="nofollow noopener sponsored" class="product-btn">Ver produto →</a>
+        </div>
+      </div>
+      <!-- /PRODUTO -->`;
+
+  document.getElementById('output-code').textContent = code;
+  document.getElementById('output-card').style.display = 'block';
+  document.getElementById('output-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ─── GERAR CÓDIGO ARTIGO ────────────────────────────
+function gerarArtigo() {
+  const titulo   = document.getElementById('a-titulo').value.trim();
+  const cat      = document.getElementById('a-categoria').value;
+  const trecho   = document.getElementById('a-trecho').value.trim();
+  const arquivo  = document.getElementById('a-arquivo').value.trim() || '#';
+  const emoji    = document.getElementById('a-emoji').value.trim() || '🏎️';
+  const dataVal  = document.getElementById('a-data').value;
+
+  if (!titulo) { alert('Preencha o título.'); return; }
+
+  const dataFmt = dataVal
+    ? new Date(dataVal + 'T12:00:00').toLocaleDateString('pt-BR')
+    : new Date().toLocaleDateString('pt-BR');
+
+  const code = `      <!-- ARTIGO -->
+      <a href="${escHtml(arquivo)}" class="article-card">
+        <div class="article-cover">${emoji}</div>
+        <div class="article-body">
+          <div class="article-category">${escHtml(cat)}</div>
+          <div class="article-title">${escHtml(titulo)}</div>
+          <div class="article-excerpt">${escHtml(trecho)}</div>
+          <div class="article-meta">${dataFmt}</div>
+        </div>
+      </a>
+      <!-- /ARTIGO -->`;
+
+  document.getElementById('output-artigo-code').textContent = code;
+  document.getElementById('output-artigo-card').style.display = 'block';
+  document.getElementById('output-artigo-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ─── UTILITÁRIOS ────────────────────────────────────
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function copiarCodigo() {
+  navigator.clipboard.writeText(document.getElementById('output-code').textContent)
+    .then(() => mostrarToast());
+}
+function copiarArtigoCode() {
+  navigator.clipboard.writeText(document.getElementById('output-artigo-code').textContent)
+    .then(() => mostrarToast());
+}
+function mostrarToast() {
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+function limparForm() {
+  ['p-nome','p-desc','p-preco','p-link','p-foto-url'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('p-plataforma').value = 'Shopee';
+  fotoBase64 = null;
+  document.getElementById('imgPreview').style.display = 'none';
+  document.getElementById('prev-foto').style.display = 'none';
+  document.getElementById('prev-emoji').style.display = 'block';
+  document.getElementById('output-card').style.display = 'none';
+  atualizarPreview();
+}
+
+// ─── LINKS PERSISTENTES (localStorage) ─────────────
+function salvarLinks() {
+  ['link-amazon','link-shopee','link-ml'].forEach(id => {
+    localStorage.setItem(id, document.getElementById(id).value);
+  });
+}
+function carregarLinks() {
+  ['link-amazon','link-shopee','link-ml'].forEach(id => {
+    const val = localStorage.getItem(id);
+    if (val) document.getElementById(id).value = val;
+  });
+}
+
+// init
+window.addEventListener('DOMContentLoaded', () => {
+  carregarLinks();
+  // preenche data de hoje
+  document.getElementById('a-data').value = new Date().toISOString().split('T')[0];
+});
+</script>
+</body>
+</html>
