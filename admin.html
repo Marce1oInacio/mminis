@@ -146,6 +146,9 @@ select{cursor:pointer}
     <button class="nav-btn" onclick="showPage('links')" id="btn-links">
       <span class="icon">🔗</span> Links Afiliados
     </button>
+    <button class="nav-btn" onclick="showPage('importar')" id="btn-importar">
+      <span class="icon">📥</span> Importar em massa
+    </button>
     <button class="nav-btn" onclick="showPage('instrucoes')" id="btn-instrucoes">
       <span class="icon">📖</span> Como usar
     </button>
@@ -372,6 +375,82 @@ select{cursor:pointer}
       </div>
     </div>
 
+    <!-- ═══════════════════════════════════════
+         PÁGINA: IMPORTAR EM MASSA
+    ═══════════════════════════════════════ -->
+    <div class="page" id="page-importar">
+      <div class="page-header">
+        <div class="page-title">Importar em Massa</div>
+        <p class="page-desc">Sobe uma planilha ou arquivo de texto com vários produtos e gera todo o código de uma vez.</p>
+      </div>
+
+      <!-- DOWNLOAD MODELO -->
+      <div class="card">
+        <div class="card-title">📄 1. Baixe o modelo e preencha</div>
+        <p style="font-size:.88rem;color:var(--muted);margin-bottom:16px">
+          Use o modelo abaixo como referência. Cada linha é um produto. Salve como <strong>.xlsx</strong>, <strong>.csv</strong> ou <strong>.txt</strong> (separado por vírgula).
+        </p>
+        <div class="output-box" style="margin-bottom:16px">
+          <pre id="modelo-csv">nome,descricao,preco,plataforma,link,foto_url
+Hot Wheels Ferrari SF90,Série Car Culture 2025,R$ 49,90,Shopee,https://shopee...,https://...
+Hot Wheels Dodge Viper,Linha básica 2025,R$ 19,90,Amazon,https://amzn.to/...,
+Hot Wheels Treasure Hunt,Super TH · Edição limitada,R$ 89,90,Mercado Livre,https://ml...,</pre>
+          <button class="copy-btn" onclick="copiarModelo()">Copiar</button>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <button class="btn btn-secondary" onclick="baixarCSV()">⬇️ Baixar modelo .csv</button>
+          <button class="btn btn-secondary" onclick="baixarXLSX()">⬇️ Baixar modelo .xlsx</button>
+        </div>
+      </div>
+
+      <!-- UPLOAD -->
+      <div class="card">
+        <div class="card-title">📂 2. Faça upload do arquivo preenchido</div>
+        <div class="img-upload" id="importUploadArea" style="margin-bottom:0">
+          <input type="file" accept=".xlsx,.xls,.csv,.txt" id="import-file" onchange="importarArquivo(this)">
+          <div class="img-upload-icon">📊</div>
+          <div class="img-upload-text">
+            <strong>Clique ou arraste</strong> seu arquivo aqui<br>
+            <span style="font-size:.75rem">Aceita .xlsx · .csv · .txt</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- PREVIEW TABELA -->
+      <div class="card" id="import-preview-card" style="display:none">
+        <div class="card-title" style="justify-content:space-between">
+          <span>👁️ 3. Confira os produtos importados</span>
+          <span id="import-count-badge" style="background:var(--accent-lt);color:var(--accent);font-size:.75rem;padding:3px 10px;border-radius:6px;font-weight:600"></span>
+        </div>
+        <div style="overflow-x:auto">
+          <table id="import-table" style="width:100%;border-collapse:collapse;font-size:.82rem">
+            <thead>
+              <tr id="import-thead" style="background:#f9f7f4"></tr>
+            </thead>
+            <tbody id="import-tbody"></tbody>
+          </table>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="gerarCodigoMassa()">⚡ Gerar código de todos</button>
+          <button class="btn btn-secondary" onclick="limparImport()">Limpar</button>
+        </div>
+      </div>
+
+      <!-- OUTPUT MASSA -->
+      <div class="card" id="import-output-card" style="display:none">
+        <div class="card-title" style="justify-content:space-between">
+          <span>📋 4. Código gerado — copie e cole no index.html</span>
+          <button class="btn btn-green" onclick="copiarMassa()" style="padding:7px 16px;font-size:.8rem">Copiar tudo</button>
+        </div>
+        <div class="output-box">
+          <pre id="import-output-code" style="max-height:400px;overflow-y:auto"></pre>
+        </div>
+        <div class="info-box" style="margin-top:16px;margin-bottom:0">
+          ℹ️ Cole este bloco inteiro no <code>index.html</code>, antes do comentário <code>&lt;!-- FIM PRODUTOS --&gt;</code>. Um commit atualiza tudo de uma vez.
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -548,6 +627,204 @@ window.addEventListener('DOMContentLoaded', () => {
   // preenche data de hoje
   document.getElementById('a-data').value = new Date().toISOString().split('T')[0];
 });
+</script>
+<!-- SheetJS para leitura de .xlsx -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+// ─── COLUNAS ESPERADAS ───────────────────────────────
+const COLUNAS = ['nome','descricao','preco','plataforma','link','foto_url'];
+const EMOJIS  = { 'Shopee':'🏎️', 'Amazon':'📦', 'Mercado Livre':'🏷️' };
+
+let importRows = [];
+
+// ─── IMPORTAR ARQUIVO ────────────────────────────────
+function importarArquivo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+
+  if (ext === 'xlsx' || ext === 'xls') {
+    lerXLSX(file);
+  } else {
+    // csv ou txt
+    const reader = new FileReader();
+    reader.onload = e => processarCSV(e.target.result);
+    reader.readAsText(file, 'UTF-8');
+  }
+}
+
+function lerXLSX(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb   = XLSX.read(e.target.result, { type: 'array' });
+    const ws   = wb.Sheets[wb.SheetNames[0]];
+    const data = XLSX.utils.sheet_to_csv(ws);
+    processarCSV(data);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function processarCSV(texto) {
+  const linhas = texto.trim().split('\n').map(l => l.trim()).filter(Boolean);
+  if (linhas.length < 2) { alert('Arquivo vazio ou sem dados.'); return; }
+
+  // detecta separador: vírgula ou ponto-e-vírgula
+  const sep = linhas[0].includes(';') ? ';' : ',';
+
+  const header = linhas[0].split(sep).map(h => h.trim().toLowerCase().replace(/[^a-z_]/g,''));
+  const rows   = [];
+
+  for (let i = 1; i < linhas.length; i++) {
+    const vals = splitCSVLine(linhas[i], sep);
+    const obj  = {};
+    header.forEach((h, idx) => { obj[h] = (vals[idx] || '').trim(); });
+    // normaliza chave "foto_url" mesmo se vier como "foto url" ou "foturl"
+    if (!obj.foto_url) obj.foto_url = obj['foto url'] || obj['foto'] || '';
+    if (obj.nome) rows.push(obj);
+  }
+
+  if (rows.length === 0) { alert('Nenhum produto encontrado. Verifique se o arquivo segue o modelo.'); return; }
+
+  importRows = rows;
+  renderizarTabela(rows, header);
+}
+
+// split respeitando campos entre aspas
+function splitCSVLine(line, sep) {
+  const result = [];
+  let current  = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQuotes = !inQuotes; }
+    else if (ch === sep && !inQuotes) { result.push(current); current = ''; }
+    else { current += ch; }
+  }
+  result.push(current);
+  return result;
+}
+
+// ─── RENDERIZAR TABELA DE PREVIEW ───────────────────
+function renderizarTabela(rows, header) {
+  const thead = document.getElementById('import-thead');
+  const tbody = document.getElementById('import-tbody');
+
+  // cabeçalho
+  const labels = { nome:'Nome', descricao:'Descrição', preco:'Preço', plataforma:'Plataforma', link:'Link', foto_url:'Foto URL' };
+  thead.innerHTML = ['#', ...COLUNAS.filter(c => header.includes(c) || c === 'nome')]
+    .map(c => `<th style="text-align:left;padding:8px 12px;border-bottom:2px solid var(--border);font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">${labels[c] || c}</th>`)
+    .join('');
+
+  // linhas
+  tbody.innerHTML = rows.map((row, i) => {
+    const plat = row.plataforma || 'Shopee';
+    const platBadge = `<span class="badge badge-${plat.toLowerCase().replace(' ','-')}">${plat}</span>`;
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:8px 12px;color:var(--muted);font-size:.78rem">${i+1}</td>
+      <td style="padding:8px 12px;font-weight:600;font-size:.85rem">${escHtml(row.nome||'')}</td>
+      <td style="padding:8px 12px;font-size:.82rem;color:var(--mid)">${escHtml(row.descricao||'')}</td>
+      <td style="padding:8px 12px;font-weight:600;font-size:.88rem">${escHtml(row.preco||'')}</td>
+      <td style="padding:8px 12px">${platBadge}</td>
+      <td style="padding:8px 12px;font-size:.75rem;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${row.link ? '✅ ok' : '⚠️ sem link'}</td>
+      <td style="padding:8px 12px;font-size:.75rem;color:var(--muted)">${row.foto_url ? '🖼️ ok' : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('import-count-badge').textContent = `${rows.length} produto${rows.length>1?'s':''}`;
+  document.getElementById('import-preview-card').style.display = 'block';
+  document.getElementById('import-output-card').style.display  = 'none';
+  document.getElementById('import-preview-card').scrollIntoView({ behavior:'smooth' });
+}
+
+// ─── GERAR CÓDIGO EM MASSA ───────────────────────────
+function gerarCodigoMassa() {
+  if (!importRows.length) return;
+
+  const blocos = importRows.map(row => {
+    const nome  = row.nome        || '';
+    const desc  = row.descricao   || '';
+    const preco = row.preco       || '';
+    const plat  = row.plataforma  || 'Shopee';
+    const link  = row.link        || '#';
+    const foto  = row.foto_url    || '';
+
+    let imgContent;
+    if (foto) {
+      imgContent = `          <img src="${escHtml(foto)}" alt="${escHtml(nome)}" style="width:100%;height:100%;object-fit:cover">`;
+    } else {
+      imgContent = `          ${EMOJIS[plat] || '🏎️'}`;
+    }
+
+    return `      <!-- PRODUTO -->
+      <div class="product-card">
+        <div class="product-img">
+${imgContent}
+          <div class="product-source">${escHtml(plat)}</div>
+        </div>
+        <div class="product-body">
+          <div class="product-name">${escHtml(nome)}</div>
+          <div class="product-desc">${escHtml(desc)}</div>
+          <div class="product-price">${escHtml(preco)}</div>
+          <a href="${escHtml(link)}" target="_blank" rel="nofollow noopener sponsored" class="product-btn">Ver produto →</a>
+        </div>
+      </div>
+      <!-- /PRODUTO -->`;
+  });
+
+  const codigo = blocos.join('\n\n');
+  document.getElementById('import-output-code').textContent = codigo;
+  document.getElementById('import-output-card').style.display = 'block';
+  document.getElementById('import-output-card').scrollIntoView({ behavior:'smooth' });
+}
+
+function copiarMassa() {
+  navigator.clipboard.writeText(document.getElementById('import-output-code').textContent)
+    .then(() => mostrarToast());
+}
+
+function limparImport() {
+  importRows = [];
+  document.getElementById('import-file').value = '';
+  document.getElementById('import-preview-card').style.display = 'none';
+  document.getElementById('import-output-card').style.display  = 'none';
+  document.getElementById('import-tbody').innerHTML = '';
+}
+
+// ─── BAIXAR MODELO ───────────────────────────────────
+function baixarCSV() {
+  const conteudo = `nome,descricao,preco,plataforma,link,foto_url
+Hot Wheels Ferrari SF90,Série Car Culture 2025,R$ 49.90,Shopee,https://shopee.com.br/...,
+Hot Wheels Dodge Viper,Linha básica 2025,R$ 19.90,Amazon,https://amzn.to/...,
+Hot Wheels Treasure Hunt,Super TH · Edição limitada,R$ 89.90,Mercado Livre,https://produto.ml/...,`;
+  baixarArquivo('modelo-mminis.csv', conteudo, 'text/csv');
+}
+
+function baixarXLSX() {
+  const ws   = XLSX.utils.aoa_to_sheet([
+    ['nome','descricao','preco','plataforma','link','foto_url'],
+    ['Hot Wheels Ferrari SF90','Série Car Culture 2025','R$ 49,90','Shopee','https://shopee.com.br/...',''],
+    ['Hot Wheels Dodge Viper','Linha básica 2025','R$ 19,90','Amazon','https://amzn.to/...',''],
+    ['Hot Wheels Treasure Hunt','Super TH · Edição limitada','R$ 89,90','Mercado Livre','https://produto.ml/...',''],
+  ]);
+  // largura das colunas
+  ws['!cols'] = [40,30,12,16,40,40].map(w => ({ wch: w }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Produtos');
+  XLSX.writeFile(wb, 'modelo-mminis.xlsx');
+}
+
+function baixarArquivo(nome, conteudo, tipo) {
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(new Blob([conteudo], { type: tipo }));
+  a.download = nome;
+  a.click();
+}
+
+function copiarModelo() {
+  navigator.clipboard.writeText(document.getElementById('modelo-csv').textContent)
+    .then(() => mostrarToast());
+}
 </script>
 </body>
 </html>
