@@ -34,7 +34,7 @@ from playwright.sync_api import sync_playwright, Page
 # =============================================
 # CONFIGURAÇÕES
 # =============================================
-ARQUIVO_LINKS     = 'links.txt'
+ARQUIVO_LINKS     = r'D:\.drive_google\mminis\links.txt'
 ARQUIVO_SAIDA     = 'produtos.json'
 ARQUIVO_HISTORICO = 'deal_history.json'
 ARQUIVO_SESSAO_AM = 'session.json'
@@ -116,21 +116,28 @@ def registrar(titulo: str, history: dict, plataforma: str):
 def ler_links() -> list[str]:
     """Lê links.txt e retorna lista de URLs válidas."""
     if not os.path.exists(ARQUIVO_LINKS):
-        # cria o arquivo de exemplo se não existir
+        # cria a pasta se não existir (ex: primeira vez)
+        os.makedirs(os.path.dirname(ARQUIVO_LINKS), exist_ok=True)
         with open(ARQUIVO_LINKS, 'w', encoding='utf-8') as f:
             f.write("""# links.txt — mminis
-# Cole aqui os links que você encontrou, um por linha.
-# Linhas começando com # são comentários e serão ignoradas.
+# Cole aqui os links que você encontrou durante suas pesquisas.
+# Um link por linha. Linhas começando com # são comentários.
 # Funciona com Amazon e Mercado Livre.
+# Este arquivo está na pasta do Google Drive — edite pelo celular também!
 #
-# Exemplos:
-# https://www.amazon.com.br/dp/B0XXXXXXX
-# https://amzn.to/XXXXXXX
+# ─── AMAZON ────────────────────────────────────────────
+# https://www.amazon.com.br/dp/B0XXXXXXXXX
+# https://amzn.to/XXXXXXXXX
+#
+# ─── MERCADO LIVRE ─────────────────────────────────────
 # https://www.mercadolivre.com.br/...
 #
+# Cole seus links abaixo desta linha:
+
 """)
-        print(f"\n📄 Arquivo '{ARQUIVO_LINKS}' criado.")
-        print("   Cole seus links lá e rode o script novamente.\n")
+        print(f"\n📄 Arquivo criado em:\n   {ARQUIVO_LINKS}")
+        print("   Cole seus links lá (pelo PC ou celular via Google Drive)")
+        print("   e rode o script novamente.\n")
         return []
 
     urls = []
