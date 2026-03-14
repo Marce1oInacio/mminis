@@ -346,7 +346,7 @@ def get_affiliate_link(page: Page, url_original: str) -> str:
 # =============================================
 
 def carregar_existentes() -> list:
-    """Carrega produtos já salvos — preserva ML, Shopee e outros."""
+    """Carrega os produtos já no JSON para não perder os de outras plataformas."""
     if os.path.exists(ARQUIVO_SAIDA):
         try:
             with open(ARQUIVO_SAIDA, 'r', encoding='utf-8') as f:
@@ -356,31 +356,6 @@ def carregar_existentes() -> list:
         except Exception:
             pass
     return []
-
-def salvar_merge(novos: list):
-    """
-    Agrega novos produtos Amazon ao JSON existente.
-    - Remove entradas antigas da Amazon
-    - Mantém ML, Shopee e outras plataformas intactos
-    - Adiciona os novos produtos Amazon no final
-    """
-    existentes = carregar_existentes()
-    outros     = [p for p in existentes if p.get('plataforma') != 'Amazon']
-    novos_ids  = {hashlib.md5(' '.join(p['nome'].lower().split()).encode()).hexdigest() for p in novos}
-
-    # Amazon antigos que não vieram nesta busca — mantém
-    amazon_manter = [
-        p for p in existentes
-        if p.get('plataforma') == 'Amazon'
-        and hashlib.md5(' '.join(p['nome'].lower().split()).encode()).hexdigest() not in novos_ids
-    ]
-
-    final = outros + amazon_manter + novos
-
-    with open(ARQUIVO_SAIDA, 'w', encoding='utf-8') as f:
-        json.dump(final, f, indent=2, ensure_ascii=False)
-
-    return len(outros), len(amazon_manter), len(novos), len(final)
 
 
 # =============================================
@@ -476,17 +451,19 @@ def main():
     # 3. Salva histórico
     save_history(history)
 
-    # 4. Merge inteligente com produtos.json
-    n_outros, n_amazon_antigos, n_novos, n_total = salvar_merge(produtos_novos)
+    # 4. Merge com existentes de outras plataformas e salva JSON
+    existentes = [p for p in carregar_existentes() if p.get('plataforma') != 'Amazon']
+    final      = existentes + produtos_novos
+
+    with open(ARQUIVO_SAIDA, 'w', encoding='utf-8') as f:
+        json.dump(final, f, indent=2, ensure_ascii=False)
 
     # 5. Resumo
     print("=" * 55)
-    print(f"  ✅ {n_novos} produtos novos da Amazon adicionados")
-    print(f"  🔒 {n_outros} produtos de outras plataformas preservados")
-    print(f"  📦 {n_amazon_antigos} produtos antigos da Amazon mantidos")
+    print(f"  ✅ {len(produtos_novos)} produtos novos salvos")
     print(f"  ⏭  {ignorados_preco} ignorados (preço acima do limite)")
     print(f"  ⏭  {ignorados_hist} ignorados (já vistos recentemente)")
-    print(f"  📄 Total no arquivo: {n_total} produtos")
+    print(f"  📄 Total no arquivo: {len(final)} produtos")
     print(f"  💾 Arquivo salvo: {ARQUIVO_SAIDA}")
     print("=" * 55)
     print("\n📤 Próximo passo: faça upload do 'produtos.json' no GitHub.")
