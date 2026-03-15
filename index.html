@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Fiveten Garage — Hot Wheels e Colecionáveis</title>
   <meta name="description"
-    content="Curadoria de Hot Wheels para comprar com segurança. Fiveten Garage — colecionador com 160+ avaliações 5 estrelas. Melhores preços na Amazon, Shopee e Mercado Livre.">
+    content="Hot Wheels para comprar com segurança. Fiveten Garage — colecionador com 160+ avaliações 5 estrelas. Melhores preços na Amazon, Shopee e Mercado Livre.">
   <link rel="canonical" href="https://marce1oinacio.github.io/mminis">
 
   <!-- Open Graph Facebook -->
@@ -30,7 +30,7 @@
       --surface2: #242424;
       --border: #2a2a2a;
       --border2: #333;
-      --cyan: #00c8d4;
+      --cyan: #57e06a52;
       --cyan2: #00a8b2;
       --cyan-glow: rgba(0, 200, 212, .15);
       --cyan-dim: rgba(0, 200, 212, .08);
@@ -82,7 +82,7 @@
       padding: 7px 0;
       text-align: center;
       font-size: .75rem;
-      color: #000;
+      color: #ffffff;
       font-weight: 600;
       letter-spacing: .06em
     }
@@ -127,10 +127,11 @@
 
     .logo-text {
       font-family: 'Bebas Neue', sans-serif;
-      font-size: 1.5rem;
+      font-size: 2.2rem;
       color: var(--white);
       letter-spacing: .06em;
-      line-height: 1
+      line-height: 1;
+      text-align: center;
     }
 
     .logo-text span {
@@ -138,314 +139,15 @@
     }
 
     .logo-sub {
-      font-size: .58rem;
+      font-size: .75rem;
       color: var(--muted);
       letter-spacing: .18em;
       text-transform: uppercase;
-      margin-top: 2px
-    }
-
-    nav {
-      display: flex;
-      gap: 2px;
-      align-items: center
-    }
-
-    nav a {
-      font-size: .82rem;
-      color: var(--mid);
-      padding: 8px 14px;
-      border-radius: 5px;
-      transition: all .2s;
-      font-weight: 400
-    }
-
-    nav a:hover {
-      color: var(--white);
-      background: rgba(255, 255, 255, .05)
-    }
-
-    .nav-cta {
-      background: var(--cyan) !important;
-      color: #000 !important;
-      font-weight: 600 !important;
-      padding: 8px 18px !important;
-      border-radius: 6px !important
-    }
-
-    .nav-cta:hover {
-      background: var(--cyan2) !important;
-      color: #000 !important
-    }
-
-    .hamburger {
-      display: none;
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 4px
-    }
-
-    .hamburger span {
-      display: block;
-      width: 24px;
-      height: 2px;
-      background: var(--white);
-      margin: 5px 0;
-      border-radius: 2px;
-      transition: all .3s
-    }
-
-    /* ── HERO ───────────────────────────────────────── */
-    .hero {
-      background: var(--bg);
-      padding: 72px 0 80px;
-      position: relative;
-      overflow: hidden;
-      border-bottom: 1px solid var(--border)
-    }
-
-    /* grade de fundo */
-    .hero::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
-      background-size: 60px 60px;
-      opacity: .3
-    }
-
-    /* brilho cyan centralizado */
-    .hero::after {
-      content: '';
-      position: absolute;
-      top: -80px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 600px;
-      height: 400px;
-      background: radial-gradient(ellipse, rgba(0, 200, 212, .12) 0%, transparent 70%);
-      pointer-events: none
-    }
-
-    .hero-inner {
-      display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      gap: 56px;
-      align-items: center;
-      position: relative;
-      z-index: 2
-    }
-
-    .hero-eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: .7rem;
-      color: var(--cyan);
-      font-weight: 600;
-      letter-spacing: .16em;
-      text-transform: uppercase;
-      margin-bottom: 20px;
-      background: var(--cyan-dim);
-      border: 1px solid rgba(0, 200, 212, .2);
-      padding: 5px 14px;
-      border-radius: 4px
-    }
-
-    .hero h1 {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: clamp(3rem, 5.5vw, 5rem);
-      line-height: 1.05;
-      color: var(--white);
-      margin-bottom: 20px;
-      letter-spacing: .02em
-    }
-
-    .hero h1 em {
-      color: var(--cyan);
-      font-style: normal;
-      display: block;
-      text-shadow: 0 0 40px rgba(0, 200, 212, .4)
-    }
-
-    .hero-sub {
-      font-size: .96rem;
-      color: var(--mid);
-      line-height: 1.75;
-      margin-bottom: 28px;
-      max-width: 430px
-    }
-
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      background: var(--surface);
-      border: 1px solid var(--border2);
-      border-radius: 8px;
-      padding: 10px 16px;
-      font-size: .82rem;
-      color: var(--white);
-      font-weight: 500;
-      margin-bottom: 32px
-    }
-
-    .hero-badge .stars {
-      color: var(--yellow);
-      letter-spacing: 1px
-    }
-
-    .hero-btns {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap
-    }
-
-    .btn-primary {
-      background: var(--cyan);
-      color: #000;
-      padding: 13px 28px;
-      border-radius: 7px;
-      font-weight: 700;
-      font-size: .9rem;
-      transition: all .2s;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      letter-spacing: .02em
-    }
-
-    .btn-primary:hover {
-      background: var(--cyan2);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(0, 200, 212, .25)
-    }
-
-    .btn-secondary {
-      background: transparent;
-      color: var(--white);
-      padding: 13px 28px;
-      border-radius: 7px;
-      font-weight: 600;
-      font-size: .9rem;
-      transition: all .2s;
-      border: 1px solid var(--border2)
-    }
-
-    .btn-secondary:hover {
-      border-color: var(--cyan);
-      color: var(--cyan)
-    }
-
-    /* painel visual hero */
-    .hero-visual .hv-card {
-      background: var(--surface);
-      border: 1px solid var(--border2);
-      border-radius: 18px;
-      padding: 32px;
-      position: relative;
-      overflow: hidden
-    }
-
-    .hero-visual .hv-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, transparent, var(--cyan), transparent)
-    }
-
-    .hero-visual .hv-card::after {
-      content: '🏎';
-      font-size: 8rem;
-      position: absolute;
-      bottom: -16px;
-      right: -8px;
-      opacity: .05;
-      line-height: 1
-    }
-
-    .hv-tag {
-      font-size: .65rem;
-      letter-spacing: .18em;
-      text-transform: uppercase;
-      color: var(--cyan);
-      margin-bottom: 6px
-    }
-
-    .hv-title {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 1.4rem;
-      letter-spacing: .06em;
-      margin-bottom: 20px
-    }
-
-    .hv-stats {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      position: relative;
-      z-index: 2
-    }
-
-    .hv-stat {
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 16px
-    }
-
-    .hv-stat-num {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 2rem;
-      color: var(--cyan);
-      letter-spacing: .03em;
-      line-height: 1;
-      text-shadow: 0 0 20px rgba(0, 200, 212, .3)
-    }
-
-    .hv-stat-lbl {
-      font-size: .68rem;
-      color: var(--muted);
       margin-top: 4px;
-      text-transform: uppercase;
-      letter-spacing: .06em
+      text-align: center;
     }
 
-    /* ── TRUST BAR ─────────────────────────────────── */
-    .trust-bar {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 18px 0
-    }
 
-    .trust-inner {
-      display: flex;
-      justify-content: center;
-      gap: 48px;
-      flex-wrap: wrap
-    }
-
-    .trust-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: .82rem;
-      color: var(--mid)
-    }
-
-    .trust-icon {
-      font-size: 1.3rem
-    }
-
-    .trust-text strong {
-      display: block;
-      color: var(--white);
-      font-size: .84rem
-    }
 
     /* ── SECTION HEADER ────────────────────────────── */
     .sec-header {
@@ -468,119 +170,6 @@
       letter-spacing: .03em
     }
 
-    /* ── PLATAFORMAS ───────────────────────────────── */
-    .plataformas {
-      background: var(--bg2);
-      padding: 64px 0;
-      border-top: 1px solid var(--border)
-    }
-
-    .plataformas .sec-title {
-      color: var(--white)
-    }
-
-    .plat-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 18px
-    }
-
-    .plat-card {
-      background: var(--surface);
-      border: 1px solid var(--border2);
-      border-radius: 14px;
-      padding: 28px 22px;
-      transition: all .25s;
-      display: block;
-      position: relative;
-      overflow: hidden
-    }
-
-    .plat-card::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: 14px;
-      border: 1px solid transparent;
-      transition: border-color .3s
-    }
-
-    .plat-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 16px 48px rgba(0, 0, 0, .4)
-    }
-
-    .plat-card:hover::after {
-      border-color: var(--cyan)
-    }
-
-    .plat-num {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 3.5rem;
-      color: rgba(255, 255, 255, .04);
-      position: absolute;
-      top: 8px;
-      right: 16px;
-      line-height: 1;
-      letter-spacing: .02em
-    }
-
-    .plat-logo {
-      font-size: 2rem;
-      margin-bottom: 14px
-    }
-
-    .plat-name {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 1.35rem;
-      color: var(--white);
-      letter-spacing: .05em;
-      margin-bottom: 8px
-    }
-
-    .plat-desc {
-      font-size: .83rem;
-      color: var(--mid);
-      line-height: 1.65;
-      margin-bottom: 18px
-    }
-
-    .plat-tags {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      margin-bottom: 18px
-    }
-
-    .plat-tag {
-      font-size: .66rem;
-      font-weight: 600;
-      padding: 3px 8px;
-      border-radius: 3px;
-      background: var(--bg3);
-      color: var(--mid);
-      border: 1px solid var(--border2);
-      text-transform: uppercase;
-      letter-spacing: .04em
-    }
-
-    .plat-link {
-      font-size: .82rem;
-      color: var(--cyan);
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 6px
-    }
-
-    .plat-link::after {
-      content: '→';
-      transition: transform .2s
-    }
-
-    .plat-card:hover .plat-link::after {
-      transform: translateX(5px)
-    }
 
     /* ── PRODUTOS ──────────────────────────────────── */
     .produtos {
@@ -833,224 +422,6 @@
       color: var(--muted)
     }
 
-    /* ── ARTIGOS ───────────────────────────────────── */
-    .artigos {
-      background: var(--bg2);
-      padding: 64px 0;
-      border-top: 1px solid var(--border)
-    }
-
-    .artigos .sec-title {
-      color: var(--white)
-    }
-
-    .articles-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 18px
-    }
-
-    .article-card {
-      background: var(--surface);
-      border: 1px solid var(--border2);
-      border-radius: 12px;
-      overflow: hidden;
-      transition: all .2s;
-      display: block
-    }
-
-    .article-card:hover {
-      border-color: var(--cyan);
-      transform: translateY(-3px)
-    }
-
-    .article-cover {
-      height: 140px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 3rem;
-      background: var(--bg3)
-    }
-
-    .article-body {
-      padding: 20px
-    }
-
-    .article-cat {
-      font-size: .64rem;
-      text-transform: uppercase;
-      letter-spacing: .16em;
-      color: var(--cyan);
-      font-weight: 600;
-      margin-bottom: 8px
-    }
-
-    .article-title {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 1.1rem;
-      color: var(--white);
-      letter-spacing: .04em;
-      line-height: 1.3;
-      margin-bottom: 8px
-    }
-
-    .article-excerpt {
-      font-size: .81rem;
-      color: var(--muted);
-      line-height: 1.6;
-      margin-bottom: 14px
-    }
-
-    .article-meta {
-      font-size: .71rem;
-      color: var(--muted);
-      display: flex;
-      align-items: center;
-      gap: 6px
-    }
-
-    .article-meta::before {
-      content: '→';
-      color: var(--cyan)
-    }
-
-    .article-empty {
-      background: var(--bg3);
-      border: 1px dashed var(--border2);
-      border-radius: 12px;
-      padding: 40px;
-      text-align: center;
-      color: var(--muted);
-      font-size: .87rem
-    }
-
-    .article-empty strong {
-      display: block;
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 1.2rem;
-      color: var(--mid);
-      margin-bottom: 6px;
-      letter-spacing: .05em
-    }
-
-    /* ── SOBRE ─────────────────────────────────────── */
-    .sobre {
-      background: var(--bg);
-      padding: 64px 0;
-      border-top: 1px solid var(--border)
-    }
-
-    .sobre-inner {
-      display: grid;
-      grid-template-columns: 1fr 1.6fr;
-      gap: 56px;
-      align-items: center
-    }
-
-    .sobre-visual {
-      background: var(--surface);
-      border: 1px solid var(--border2);
-      border-radius: 16px;
-      padding: 36px;
-      text-align: center;
-      position: relative;
-      overflow: hidden
-    }
-
-    .sobre-visual::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, var(--cyan), transparent)
-    }
-
-    .sobre-visual::after {
-      content: '🏁';
-      font-size: 7rem;
-      opacity: .04;
-      position: absolute;
-      bottom: -12px;
-      right: -12px;
-      line-height: 1
-    }
-
-    .sobre-avatar {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
-      background: var(--bg3);
-      border: 2px solid var(--cyan);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2rem;
-      margin: 0 auto 16px;
-      box-shadow: 0 0 20px var(--cyan-glow)
-    }
-
-    .sobre-name {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 1.6rem;
-      color: var(--white);
-      letter-spacing: .06em;
-      margin-bottom: 2px
-    }
-
-    .sobre-role {
-      font-size: .72rem;
-      color: var(--muted);
-      margin-bottom: 20px;
-      letter-spacing: .08em;
-      text-transform: uppercase
-    }
-
-    .sobre-stats {
-      display: flex;
-      gap: 10px
-    }
-
-    .sobre-stat {
-      flex: 1;
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px 6px
-    }
-
-    .sobre-stat-num {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 1.6rem;
-      color: var(--cyan);
-      letter-spacing: .04em;
-      text-shadow: 0 0 12px rgba(0, 200, 212, .3)
-    }
-
-    .sobre-stat-lbl {
-      font-size: .62rem;
-      color: var(--muted);
-      margin-top: 3px;
-      text-transform: uppercase;
-      letter-spacing: .07em
-    }
-
-    .sobre-text p {
-      color: var(--mid);
-      margin-bottom: 14px;
-      font-size: .93rem;
-      line-height: 1.8
-    }
-
-    .sobre-text p:last-child {
-      margin-bottom: 0
-    }
-
-    .sobre-text strong {
-      color: var(--white)
-    }
 
     /* ── FOOTER ────────────────────────────────────── */
     footer {
@@ -1133,61 +504,16 @@
 
     /* ── RESPONSIVE ────────────────────────────────── */
     @media(max-width:900px) {
-      .hero-inner {
-        grid-template-columns: 1fr
-      }
-
-      .hero-visual {
-        display: none
-      }
-
-      .plat-grid {
-        grid-template-columns: 1fr
-      }
-
-      .sobre-inner {
-        grid-template-columns: 1fr
-      }
-
       .footer-top {
         grid-template-columns: 1fr 1fr
       }
     }
 
     @media(max-width:600px) {
-      nav {
-        display: none
-      }
-
-      nav.open {
-        display: flex;
-        flex-direction: column;
-        position: fixed;
-        inset: 68px 0 0 0;
-        background: var(--bg2);
-        padding: 24px;
-        gap: 6px;
-        z-index: 199;
-        border-top: 1px solid var(--border)
-      }
-
-      nav.open a {
-        font-size: .95rem;
-        padding: 12px 16px;
-        border-radius: 6px
-      }
-
-      .hamburger {
-        display: block
-      }
 
       .products-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 12px
-      }
-
-      .articles-grid {
-        grid-template-columns: 1fr
       }
 
       .footer-top {
@@ -1208,184 +534,36 @@
         align-items: flex-start
       }
     }
-
-    @keyframes fadeUp {
-      from {
-        opacity: 0;
-        transform: translateY(18px)
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0)
-      }
-    }
-
-    .hero h1,
-    .hero-sub,
-    .hero-badge,
-    .hero-btns {
-      animation: fadeUp .6s ease both
-    }
-
-    .hero-sub {
-      animation-delay: .1s
-    }
-
-    .hero-badge {
-      animation-delay: .15s
-    }
-
-    .hero-btns {
-      animation-delay: .22s
-    }
   </style>
 </head>
 
 <body>
 
   <!-- TOP BAR -->
-  <div class="top-bar">🏎 Fiveten Garage — Curadoria de Hot Wheels · 160+ Avaliações 5★ · Presidente Prudente, SP</div>
+  <div class="top-bar">🏎 Fiveten Garage — Hot Wheels · 160+ Avaliações 5★ · Presidente Prudente, SP</div>
 
   <!-- HEADER -->
   <header>
-    <div class="container header-inner">
-      <a class="logo" href="#">
-        <div class="logo-icon">🏎</div>
-        <div>
-          <div class="logo-text">Fiveten<span> Garage</span></div>
-          <div class="logo-sub">Hot Wheels &amp; Colecionáveis</div>
-        </div>
-      </a>
-      <nav id="nav">
-        <a href="#produtos">Produtos</a>
-        <a href="#plataformas">Onde Comprar</a>
-        <a href="#artigos">Artigos</a>
-        <a href="#sobre">Sobre</a>
-        <a href="#produtos" class="nav-cta">Ver Ofertas</a>
-      </nav>
-      <button class="hamburger" id="hamburger" aria-label="Menu">
-        <span></span><span></span><span></span>
-      </button>
+    <div class="container header-inner" style="justify-content: center; height: auto; padding: 40px 0;">
+      <div class="logo" style="flex-direction: column; align-items: center; gap: 8px;">
+        <div class="logo-text">Fiveten<span> Garage</span></div>
+        <div class="logo-sub">Hot Wheels &amp; Colecionáveis</div>
+
+        <button class="share-btn" onclick="compartilharFacebook()" style="margin-top: 20px;">
+          <div class="fb-icon-wrap">f</div>
+          Compartilhar no Facebook
+        </button>
+      </div>
     </div>
   </header>
 
-  <!-- HERO -->
-  <section class="hero">
-    <div class="container hero-inner">
-      <div>
-        <div class="hero-eyebrow">⚡ Curador Verificado · Colecionador Ativo</div>
-        <h1>Hot Wheels<br><em>Que Valem</em><br>Seu Dinheiro</h1>
-        <div class="hero-badge">
-          <span class="stars">★★★★★</span>
-          160+ avaliações 5 estrelas · 3 anos vendendo
-        </div>
-        <p class="hero-sub">Curadoria honesta de Hot Wheels e colecionáveis — preços justos nas plataformas certas. Sem
-          caça, sem risco, sem pagar caro.</p>
-        <div class="hero-btns">
-          <a href="#produtos" class="btn-primary">🔥 Ver Produtos em Destaque</a>
-          <a href="#plataformas" class="btn-secondary">Onde Comprar</a>
-        </div>
-      </div>
-      <div class="hero-visual">
-        <div class="hv-card">
-          <div class="hv-tag">Fiveten Garage · Curador Verificado</div>
-          <div class="hv-title">Colecionador de Miniaturas</div>
-          <div class="hv-stats">
-            <div class="hv-stat">
-              <div class="hv-stat-num">160+</div>
-              <div class="hv-stat-lbl">Avaliações 5★</div>
-            </div>
-            <div class="hv-stat">
-              <div class="hv-stat-num">100%</div>
-              <div class="hv-stat-lbl">Satisfação</div>
-            </div>
-            <div class="hv-stat">
-              <div class="hv-stat-num">3 anos</div>
-              <div class="hv-stat-lbl">No mercado</div>
-            </div>
-            <div class="hv-stat">
-              <div class="hv-stat-num">R$0</div>
-              <div class="hv-stat-lbl">Custo extra</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- TRUST BAR -->
-  <div class="trust-bar">
-    <div class="container trust-inner">
-      <div class="trust-item"><span class="trust-icon">🔒</span>
-        <div class="trust-text"><strong>Compra Segura</strong>Links diretos das lojas oficiais</div>
-      </div>
-      <div class="trust-item"><span class="trust-icon">💰</span>
-        <div class="trust-text"><strong>Sem Custo Extra</strong>Comissão paga pela loja</div>
-      </div>
-      <div class="trust-item"><span class="trust-icon">⭐</span>
-        <div class="trust-text"><strong>Curadoria Real</strong>Por quem coleciona de verdade</div>
-      </div>
-      <div class="trust-item"><span class="trust-icon">🔄</span>
-        <div class="trust-text"><strong>Sempre Atualizado</strong>Novos produtos toda semana</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- PLATAFORMAS -->
-  <section class="plataformas" id="plataformas">
-    <div class="container">
-      <div class="sec-header">
-        <div class="sec-eyebrow">Onde Comprar</div>
-        <div class="sec-title">Plataformas Recomendadas</div>
-      </div>
-      <div class="plat-grid">
-        <a href="SEU_LINK_AFILIADO_AMAZON" target="_blank" rel="nofollow noopener sponsored" class="plat-card">
-          <div class="plat-num">01</div>
-          <div class="plat-logo">📦</div>
-          <div class="plat-name">Amazon Brasil</div>
-          <div class="plat-desc">Minha primeira recomendação. Devolução fácil, garantia de autenticidade e frete Prime.
-          </div>
-          <div class="plat-tags"><span class="plat-tag">Mais segura</span><span class="plat-tag">Frete Prime</span><span
-              class="plat-tag">Devolução fácil</span></div>
-          <div class="plat-link">Ver Hot Wheels na Amazon</div>
-        </a>
-        <a href="SEU_LINK_AFILIADO_SHOPEE" target="_blank" rel="nofollow noopener sponsored" class="plat-card">
-          <div class="plat-num">02</div>
-          <div class="plat-logo">🛍️</div>
-          <div class="plat-name">Shopee</div>
-          <div class="plat-desc">Melhor custo-benefício. Maior variedade e preços até 30% menores. Sei separar os bons
-            vendedores.</div>
-          <div class="plat-tags"><span class="plat-tag">Melhor preço</span><span class="plat-tag">Variedade</span><span
-              class="plat-tag">Econômico</span></div>
-          <div class="plat-link">Ver Hot Wheels na Shopee</div>
-        </a>
-        <a href="SEU_LINK_AFILIADO_ML" target="_blank" rel="nofollow noopener sponsored" class="plat-card">
-          <div class="plat-num">03</div>
-          <div class="plat-logo">🏷️</div>
-          <div class="plat-name">Mercado Livre</div>
-          <div class="plat-desc">Para modelos raros, descontinuados e Treasure Hunts. Preços mais altos, mas às vezes é
-            a única opção.</div>
-          <div class="plat-tags"><span class="plat-tag">Modelos raros</span><span class="plat-tag">Treasure
-              Hunts</span><span class="plat-tag">Importados</span></div>
-          <div class="plat-link">Ver Hot Wheels no ML</div>
-        </a>
-      </div>
-    </div>
-  </section>
 
   <!-- PRODUTOS -->
   <section class="produtos" id="produtos">
     <div class="container">
-      <div class="produtos-header">
-        <div>
-          <div class="sec-eyebrow">Seleção da semana</div>
-          <div class="sec-title">Produtos em Destaque</div>
-        </div>
-        <button class="share-btn" onclick="compartilharFacebook()">
-          <div class="fb-icon-wrap">f</div>
-          Compartilhar no Facebook
-        </button>
+      <div class="sec-header">
+        <div class="sec-eyebrow">Seleção da semana</div>
+        <div class="sec-title">Produtos em Destaque</div>
       </div>
 
       <div id="produtos-loading" class="produtos-loading">
@@ -1408,67 +586,6 @@
     </div>
   </section>
 
-  <!-- ARTIGOS -->
-  <section class="artigos" id="artigos">
-    <div class="container">
-      <div class="sec-header">
-        <div class="sec-eyebrow">Conteúdo</div>
-        <div class="sec-title">Guias e Artigos</div>
-      </div>
-      <div class="articles-grid">
-        <div class="article-empty">
-          <strong>Em Breve</strong>
-          Primeiros artigos sendo preparados.<br>Volte em breve ou siga nas redes.
-        </div>
-        <!-- ARTIGO (descomente quando publicar)
-      <a href="artigo-onde-comprar-hot-wheels.html" class="article-card">
-        <div class="article-cover">🏎️</div>
-        <div class="article-body">
-          <div class="article-cat">Guia de compra</div>
-          <div class="article-title">Onde Comprar Hot Wheels Online com Segurança</div>
-          <div class="article-excerpt">Amazon, Shopee ou ML? Após 3 anos comprando e vendendo, explico qual usar em cada situação.</div>
-          <div class="article-meta">12/03/2026 · 5 min</div>
-        </div>
-      </a>
-      -->
-        <!-- FIM ARTIGOS -->
-      </div>
-    </div>
-  </section>
-
-  <!-- SOBRE -->
-  <section class="sobre" id="sobre">
-    <div class="container sobre-inner">
-      <div class="sobre-visual">
-        <div class="sobre-avatar">🏎</div>
-        <div class="sobre-name">Fiveten Garage</div>
-        <div class="sobre-role">Colecionador · Presidente Prudente, SP</div>
-        <div class="sobre-stats">
-          <div class="sobre-stat">
-            <div class="sobre-stat-num">160+</div>
-            <div class="sobre-stat-lbl">Avaliações</div>
-          </div>
-          <div class="sobre-stat">
-            <div class="sobre-stat-num">5★</div>
-            <div class="sobre-stat-lbl">Nota</div>
-          </div>
-          <div class="sobre-stat">
-            <div class="sobre-stat-num">3 anos</div>
-            <div class="sobre-stat-lbl">Vendendo</div>
-          </div>
-        </div>
-      </div>
-      <div class="sobre-text">
-        <p>Comecei como caçador de Hot Wheels — aquelas idas às lojas cedo da manhã esperando a reposição, farejando
-          raridades nas prateleiras. <strong>Ao longo de 3 anos, acumulei mais de 160 transações com avaliação 5
-            estrelas</strong> na loja mminis da Shopee.</p>
-        <p>Com o tempo, percebi que o maior problema dos colecionadores não era encontrar os carrinhos — era não saber
-          onde comprar online com segurança, quais vendedores confiar e quando um preço é justo ou um abuso.</p>
-        <p>A Fiveten Garage nasceu pra resolver isso. <strong>Curadoria real, baseada em experiência prática</strong> —
-          não em algoritmos. Você não precisa caçar. A gente já achou.</p>
-      </div>
-    </div>
-  </section>
 
   <!-- FOOTER -->
   <footer>
@@ -1476,16 +593,13 @@
       <div class="footer-top">
         <div>
           <div class="footer-logo">Fiveten<span> Garage</span></div>
-          <p class="footer-about">Curadoria de Hot Wheels e colecionáveis para comprar online com segurança. Loja
+          <p class="footer-about">Hot Wheels e colecionáveis para comprar online com segurança. Loja
             Shopee: mminis · Presidente Prudente, SP.</p>
         </div>
         <div>
           <div class="footer-col-title">Navegação</div>
           <ul class="footer-links">
             <li><a href="#produtos">Produtos</a></li>
-            <li><a href="#plataformas">Onde Comprar</a></li>
-            <li><a href="#artigos">Artigos</a></li>
-            <li><a href="#sobre">Sobre</a></li>
           </ul>
         </div>
         <div>
@@ -1506,11 +620,6 @@
   </footer>
 
   <script>
-    // ── MENU MOBILE
-    const h = document.getElementById('hamburger');
-    const n = document.getElementById('nav');
-    h.addEventListener('click', () => n.classList.toggle('open'));
-    n.querySelectorAll('a').forEach(a => a.addEventListener('click', () => n.classList.remove('open')));
 
     // ── FACEBOOK SHARE — link direto para #produtos
     function compartilharFacebook() {
@@ -1551,20 +660,24 @@
         const ts = Math.floor(Date.now() / 60000);
         const res = await fetch(`produtos.json?v=${ts}`);
         if (!res.ok) throw new Error();
+
         const lista = await res.json();
         if (!Array.isArray(lista) || lista.length === 0) throw new Error();
+
         const grid = document.getElementById('produtos-grid');
         grid.innerHTML = lista.map(renderCard).join('');
+
         grid.style.display = 'grid';
         document.getElementById('produtos-loading').style.display = 'none';
         document.getElementById('produtos-footer').style.display = 'block';
-        const atualizado = lista[0]?.atualizado || '';
-        if (atualizado) document.getElementById('produtos-atualizado').textContent = `Atualizado em ${atualizado}`;
-      } catch {
+
+        // Removido o bloco que buscava "lista[0]?.atualizado"
+      } catch (error) {
         document.getElementById('produtos-loading').style.display = 'none';
         document.getElementById('produtos-erro').style.display = 'block';
       }
     }
+
     carregarProdutos();
   </script>
 </body>
