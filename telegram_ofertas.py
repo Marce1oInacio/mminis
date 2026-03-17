@@ -145,7 +145,7 @@ def formatar_mensagem(p: dict) -> str:
     # linhas.append("")
     # linhas.append("━━━━━━━━━━━━━━━━━━━━━")
     # linhas.append(f"📲 Grupo VIP Telegram: https://t.me/fivetenvip")
-    # linhas.append("🏎 <b>Fiveten Garage</b> — Curadoria de colecionáveis")
+    # linhas.append("🟡 <b>Fiveten Garage</b> — Curadoria de colecionáveis")
 
     return "\n".join(linhas)
 
