@@ -124,7 +124,7 @@ def formatar_mensagem(p: dict) -> str:
     emoji_plat = {'Amazon': '📦', 'Mercado Livre': '🏷️', 'Shopee': '🛍️'}.get(plat, '🛒')
 
     linhas = [gancho, ""]
-    linhas.append(f"🏎 <b>{p['nome'][:80]}</b>")
+    linhas.append(f"🟡 <b>{p['nome'][:80]}</b>")
     linhas.append("")
 
     if p.get('preco_antigo'):
