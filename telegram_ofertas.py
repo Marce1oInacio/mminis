@@ -24,6 +24,7 @@ import time
 import random
 import hashlib
 import requests
+import csv
 from datetime import datetime
 from urllib.parse import quote_plus
 from playwright.sync_api import sync_playwright, Page
@@ -36,7 +37,7 @@ TELEGRAM_TOKEN  = "8748572165:AAF2mKNmurwRf4cV4vC4uJnUiG1nyR3zyjY"          # to
 TELEGRAM_CANAL  = "-1002962498795"       # ex: -1001234567890
 
 # Critérios de seleção de ofertas
-DESCONTO_MINIMO = 20          # % mínimo de desconto para considerar
+DESCONTO_MINIMO = 0          # % mínimo de desconto para considerar
 PRECO_MAXIMO    = 500.0       # ignora produtos acima deste valor
 MAX_POR_BUSCA   = 5           # máximo de produtos por termo buscado
 INTERVALO_POSTS = 30          # segundos entre posts no Telegram
@@ -60,6 +61,11 @@ ARQUIVO_SAIDA     = 'produtos.json'
 ARQUIVO_HISTORICO = 'deal_history.json'
 ARQUIVO_SESSAO_AM = 'session.json'
 ARQUIVO_SESSAO_ML = 'session_ml.json'
+ARQUIVO_LOG_TELEGRAM = 'log_telegram.json'
+
+# --- ABAIXO: Link do Google Sheets ---
+# Colado automaticamente ou manualmente para ler links do celular
+GOOGLE_SHEET_URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbBLKgjFglQH0JFpOx7XxKnWD1fDDVnia-ufRbOgdqm34ITVD5twQAd1Aw9drYTecWwV2XMzXTMdmn/pub?gid=0&single=true&output=csv'
 
 
 # =============================================
@@ -571,6 +577,125 @@ def _scrape_produto_ml(page: Page, url: str) -> dict | None:
         'url_original': url, 'atualizado': datetime.now().strftime('%d/%m/%Y %H:%M'),
     }
 
+def _scrape_produto_generico(page: Page, url: str) -> dict | None:
+    """Fallback para qualquer site: tenta pegar o título da página e imagem og:image."""
+    try:
+        # Tenta carregar o link
+        page.goto(url, wait_until='domcontentloaded', timeout=30000)
+        time.sleep(2)
+        
+        titulo = page.title()
+        if not titulo or len(titulo) < 3:
+            titulo = "Oferta Especial"
+
+        # Tenta pegar imagem das meta tags
+        foto_url = ""
+        try:
+            meta_img = page.query_selector("meta[property='og:image']")
+            if meta_img:
+                foto_url = meta_img.get_attribute("content")
+        except:
+            pass
+
+        return {
+            'nome': titulo.strip()[:100],
+            'descricao': f"Confira esta oferta no link abaixo!",
+            'preco': 'Ver no site',
+            'preco_num': 0.0,
+            'preco_antigo': '',
+            'desconto': 0,
+            'plataforma': 'Outros',
+            'link': url,
+            'foto_url': foto_url or '',
+            'avaliacao': '?',
+            'num_aval': 0,
+            'url_original': url,
+            'atualizado': datetime.now().strftime('%d/%m/%Y %H:%M'),
+        }
+    except Exception as e:
+        print(f"       ✗ Erro no scraper genérico: {e}")
+        return {
+            'nome': "Oferta Especial",
+            'descricao': "Acesse o link para conferir os detalhes desta oferta!",
+            'preco': 'Ver no site',
+            'preco_num': 0.0,
+            'preco_antigo': '',
+            'desconto': 0,
+            'plataforma': 'Outros',
+            'link': url,
+            'foto_url': '',
+            'avaliacao': '?',
+            'num_aval': 0,
+            'url_original': url,
+            'atualizado': datetime.now().strftime('%d/%m/%Y %H:%M'),
+        }
+
+def processar_links_google(page_am, page_ml, history) -> list:
+    """Busca links no Google Sheets e extrai os dados dos produtos."""
+    if not GOOGLE_SHEET_URL:
+        return []
+        
+    print(f"\n🌐 Verificando links no Google Sheets...")
+    urls = []
+    try:
+        res = requests.get(GOOGLE_SHEET_URL, timeout=15)
+        if res.ok:
+            linhas = res.text.splitlines()
+            reader = csv.reader(linhas)
+            for row in reader:
+                if row:
+                    url = row[0].strip()
+                    if url.startswith('http'):
+                        urls.append(url)
+    except Exception as e:
+        print(f"  ⚠️  Erro ao ler Google Sheets: {e}")
+        return []
+
+    produtos = []
+    for i, url in enumerate(urls, 1):
+        print(f"  🔗 Link Extra [{i}/{len(urls)}]: {url[:60]}...")
+        
+        dados = None
+        if 'amazon.com.br' in url or 'amzn.to' in url:
+            dados = _scrape_produto_amazon(page_am, url)
+        elif 'mercadolivre.com' in url:
+            dados = _scrape_produto_ml(page_ml, url)
+        else:
+            # Novo: Tenta scraper genérico para outros sites
+            print(f"       ℹ️ Plataforma não mapeada. Tentando extração básica...")
+            dados = _scrape_produto_generico(page_am, url) # Usa o contexto da Amazon que já está aberto
+            
+        if dados:
+            # Para links manuais, ignoramos o filtro de desconto mínimo 
+            # e agora também removemos a trava de 'já postado', conforme pedido.
+            produtos.append(dados)
+            print(f"       ✓ {dados['nome'][:50]} | {dados['preco']}")
+            time.sleep(random.uniform(1, 2))
+        else:
+            print(f"       ✗ Falha ao extrair dados")
+            
+    return produtos
+
+def log_telegram_post(produto: dict):
+    """Salva um log apartado dos itens postados no Telegram."""
+    log_data = []
+    if os.path.exists(ARQUIVO_LOG_TELEGRAM):
+        try:
+            with open(ARQUIVO_LOG_TELEGRAM, 'r', encoding='utf-8') as f:
+                log_data = json.load(f)
+        except:
+            log_data = []
+    
+    item_log = produto.copy()
+    item_log['postado_em'] = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+    log_data.append(item_log)
+    
+    if len(log_data) > 1000:
+        log_data = log_data[-1000:]
+        
+    with open(ARQUIVO_LOG_TELEGRAM, 'w', encoding='utf-8') as f:
+        json.dump(log_data, f, indent=2, ensure_ascii=False)
+
 
 # =============================================
 # EXECUÇÃO PRINCIPAL
@@ -587,50 +712,21 @@ def main():
         print("   Edite o arquivo e insira seu token do @BotFather.\n")
         return
 
-    # ── TERMOS DE BUSCA INTERATIVOS ──────────────────
-    print("\n🔍 Digite os termos de busca (um por linha).")
-    print("   Deixe a linha em branco e pressione ENTER para terminar.\n")
-
-    termos_amazon = []
-    termos_ml     = []
-
-    print("📦 Termos para AMAZON (Enter em branco para pular):")
-    while True:
-        t = input("  + ").strip()
-        if not t:
-            break
-        termos_amazon.append(t)
-
-    print("\n🏷️  Termos para MERCADO LIVRE (Enter em branco para pular):")
-    while True:
-        t = input("  + ").strip()
-        if not t:
-            break
-        termos_ml.append(t)
-
-    if not termos_amazon and not termos_ml:
-        print("\n⚠️  Nenhum termo digitado. Encerrando.")
-        return
-
-    # ── PARÂMETROS ────────────────────────────────────
-    desc_str = input(f"\n📉 Desconto mínimo % (Enter = {DESCONTO_MINIMO}): ").strip()
-    desconto_min = int(desc_str) if desc_str.isdigit() else DESCONTO_MINIMO
-
-    preco_str = input(f"💰 Preço máximo R$ (Enter = {PRECO_MAXIMO:.0f}): ").strip()
-    preco_max = float(preco_str.replace(',', '.')) if preco_str else PRECO_MAXIMO
-
-    qtd_str = input(f"📦 Máximo por termo (Enter = {MAX_POR_BUSCA}): ").strip()
-    qtd_max = int(qtd_str) if qtd_str.isdigit() else MAX_POR_BUSCA
-
     # ── MODO ─────────────────────────────────────────
-    print("\nO que deseja fazer?")
-    print("  1. Buscar + postar no Telegram + salvar no site")
-    print("  2. Só buscar e salvar no site (sem postar)")
-    print("  3. Só postar no Telegram (usando produtos.json existente)")
-    opcao = input("\nEscolha (1/2/3): ").strip()
+    print("\n🚀 O que deseja fazer hoje?")
+    print("  1. 🔍 Buscar novos produtos + 📨 Postar + 🌐 Salvar site")
+    print("  2. 🔍 Só buscar e salvar no site (sem postar)")
+    print("  3. 📨 Só postar no Telegram (usar produtos.json já existente)")
+    print("  4. 🔗 Só acessar links (Google Sheets) e postar no Telegram")
+    opcao = input("\nEscolha (1/2/3/4): ").strip()
+
+    if opcao not in ['1', '2', '3', '4']:
+        print("Opção inválida.")
+        return
 
     history = load_history()
 
+    # -- Opção 3: Postagem Direta do JSON --
     if opcao == '3':
         if not os.path.exists(ARQUIVO_SAIDA):
             print("produtos.json não encontrado.")
@@ -639,21 +735,86 @@ def main():
             lista = json.load(f)
         nao_postados = [p for p in lista if not ja_postado(p.get('nome', ''), history)]
         print(f"\n{len(nao_postados)} produtos ainda não postados no Telegram.")
-        qtd = input(f"Quantos postar? (Enter = todos): ").strip()
-        qtd = int(qtd) if qtd.isdigit() else len(nao_postados)
-        for p in nao_postados[:qtd]:
+        if not nao_postados:
+            return
+            
+        qtd_str = input(f"Quantos postar? (Enter = todos {len(nao_postados)}): ").strip()
+        qtd = int(qtd_str) if qtd_str.isdigit() else len(nao_postados)
+        selecionados = nao_postados[:qtd]
+        
+        print(f"\n⚠️  Confirmar postagem de {len(selecionados)} itens? (S/n): ", end="")
+        if input().strip().lower() == 'n':
+            print("❌ Cancelado.")
+            return
+
+        print(f"\n📨 Postando no Telegram ({INTERVALO_POSTS}s entre posts)...")
+        for i, p in enumerate(selecionados):
             msg = formatar_mensagem(p)
             ok  = telegram_send(msg, p.get('foto_url'))
-            registrar(p['nome'], history, p.get('plataforma', ''))
-            print(f"  {'✅' if ok else '❌'} {p['nome'][:50]}")
-            time.sleep(INTERVALO_POSTS)
+            if ok:
+                log_telegram_post(p)
+                registrar(p['nome'], history, p.get('plataforma', ''))
+                print(f"  ✅ {p['nome'][:50]}")
+            else:
+                print(f"  ❌ Falha: {p['nome'][:50]}")
+            
+            if i < len(selecionados) - 1 and ok:
+                time.sleep(INTERVALO_POSTS)
         save_history(history)
         return
 
-    postar = (opcao != '2')
+    # -- Configuração para Opções 1, 2 e 4 --
+    usar_google = True
+    termos_amazon = []
+    termos_ml = []
+    
+    if opcao in ['1', '2']:
+        print("\n🔍 Configuração da busca:")
+        usar_google_prompt = input("🌐 Processar links do Google Sheets? (S/n): ").strip().lower()
+        usar_google = usar_google_prompt != 'n'
+
+        print("\n📦 Digite os termos para AMAZON (um por linha, Enter vazio para encerrar):")
+        while True:
+            t = input("  + ").strip()
+            if not t: break
+            termos_amazon.append(t)
+
+        print("\n🏷️  Digite os termos para MERCADO LIVRE (um por linha, Enter vazio para encerrar):")
+        while True:
+            t = input("  + ").strip()
+            if not t: break
+            termos_ml.append(t)
+    
+    # Se for opção 4, usar_google já é True e termos estão vazios, pronto.
+
+    if not termos_amazon and not termos_ml and not usar_google:
+        print("\n⚠️  Nenhum termo ou fonte de dados selecionada. Encerrando.")
+        return
+
+    # ── PARÂMETROS ────────────────────────────────────
+    desconto_min = DESCONTO_MINIMO
+    preco_max = PRECO_MAXIMO
+    qtd_max = MAX_POR_BUSCA
+    
+    if opcao in ['1', '2']:
+        desc_str = input(f"\n📉 Desconto mínimo % (Enter = {DESCONTO_MINIMO}): ").strip()
+        desconto_min = int(desc_str) if desc_str.isdigit() else DESCONTO_MINIMO
+
+        preco_str = input(f"💰 Preço máximo R$ (Enter = {PRECO_MAXIMO:.0f}): ").strip()
+        preco_max = float(preco_str.replace(',', '.')) if preco_str else PRECO_MAXIMO
+
+        qtd_str = input(f"📦 Máximo por termo (Enter = {MAX_POR_BUSCA}): ").strip()
+        qtd_max = int(qtd_str) if qtd_str.isdigit() else MAX_POR_BUSCA
+
+    postar = (opcao in ['1', '4'])
+
+    postar = (opcao in ['1', '4'])
 
     print(f"\n🚀 Iniciando busca")
-    print(f"   Desconto mínimo: {desconto_min}% · Preço máximo: R$ {preco_max:.0f} · Máx por termo: {qtd_max}\n")
+    if opcao in ['1', '2']:
+        print(f"   Desconto mínimo: {desconto_min}% · Preço máximo: R$ {preco_max:.0f} · Máx por termo: {qtd_max}\n")
+    else:
+        print(f"   Modo: Extrair links do Google Sheets\n")
 
     with sync_playwright() as p:
         browser = p.firefox.launch(headless=False)
@@ -702,13 +863,22 @@ def main():
                                        qtd_max=qtd_max)
                 todos.extend(resultados)
 
+        # ── NOVOS: Links do Google Sheets ────────────────
+        if usar_google:
+            links_google = processar_links_google(page_am, page_ml, history)
+            todos.extend(links_google)
+
         ctx_am.close()
         ctx_ml.close()
         browser.close()
 
     if not todos:
-        print(f"\n⚠️  Nenhuma oferta encontrada com desconto ≥ {desconto_min}%.")
-        print(f"   Tente reduzir o desconto mínimo ou usar outros termos.")
+        if opcao == '4' or usar_google:
+            print(f"\nℹ️  Nenhuma oferta nova encontrada para processar.")
+            print(f"    (Pode ser que todos os links já tenham sido postados recentemente ou houve erro na extração)")
+        else:
+            print(f"\n⚠️  Nenhuma oferta encontrada com desconto ≥ {desconto_min}%.")
+            print(f"   Tente reduzir o desconto mínimo ou usar outros termos.")
         return
 
     todos.sort(key=lambda x: x.get('desconto', 0), reverse=True)
@@ -720,20 +890,27 @@ def main():
         print(f"  {prod['desconto']:3d}% | {prod['plataforma']:<15} | {prod['preco']:<12} | {prod['nome'][:38]}")
 
     if postar and todos:
-        print(f"\n📨 Postando no Telegram ({INTERVALO_POSTS}s entre posts)...")
-        postados = 0
-        for prod in todos:
-            msg = formatar_mensagem(prod)
-            ok  = telegram_send(msg, prod.get('foto_url'))
-            registrar(prod['nome'], history, prod.get('plataforma', ''))
-            print(f"  {'✅' if ok else '❌'} {prod['nome'][:50]}")
-            postados += 1
-            if postados < len(todos):
-                time.sleep(INTERVALO_POSTS)
-        print(f"\n  📊 {postados} mensagens enviadas ao canal")
-    else:
-        for prod in todos:
-            registrar(prod['nome'], history, prod.get('plataforma', ''))
+        print(f"\n⚠️  Tem certeza que deseja postar esses {len(todos)} itens no Telegram? (S/n): ", end="")
+        confirma = input().strip().lower()
+        if confirma == 'n':
+            print("❌ Postagem cancelada pelo usuário.")
+        else:
+            print(f"\n📨 Postando no Telegram ({INTERVALO_POSTS}s entre posts)...")
+            postados = 0
+            for i, prod in enumerate(todos):
+                msg = formatar_mensagem(prod)
+                ok  = telegram_send(msg, prod.get('foto_url'))
+                if ok:
+                    log_telegram_post(prod)
+                    registrar(prod['nome'], history, prod.get('plataforma', ''))
+                    print(f"  ✅ {prod['nome'][:50]}")
+                    postados += 1
+                else:
+                    print(f"  ❌ Falha: {prod['nome'][:50]}")
+                
+                if i < len(todos) - 1 and ok:
+                    time.sleep(INTERVALO_POSTS)
+            print(f"\n  📊 {postados} mensagens enviadas ao canal")
 
     save_history(history)
     salvar_no_site(todos)

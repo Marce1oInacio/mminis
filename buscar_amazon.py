@@ -33,6 +33,7 @@ ARQUIVO_HISTORICO = 'deal_history.json' # evita repetir produtos
 PRECO_MAXIMO     = 500.0                # ignora acima deste valor (0 = sem limite)
 MAX_PAGINAS      = 3                    # quantas páginas de busca percorrer
 MAX_PRODUTOS     = 20                   # máximo de produtos no JSON final
+MIN_VENDAS       = 0                    # mínimo de vendas/avaliações
 BASE_URL         = 'https://www.amazon.com.br'
 
 
@@ -258,10 +259,18 @@ def scrape_produto(page: Page, url: str) -> dict | None:
 
     # — Número de avaliações —
     num_aval_str = texto(['#acrCustomerReviewText', 'span[data-hook="total-review-count"]'])
-    num_aval = ''
+    num_aval = 0
     if num_aval_str:
-        m = re.search(r'([\d\.,]+)', num_aval_str.replace('.', ''))
-        num_aval = m.group(1) if m else ''
+        m = re.search(r'([\d\.,]+)', num_aval_str.replace('.', '').replace(',', ''))
+        num_aval = int(m.group(1)) if m else 0
+
+    # — Vendas (Social Proof) —
+    # Ex: "100+ comprados no mês passado"
+    vendas_str = texto(['.social-proofing-faceout-title-text', 'span.social-proofing-faceout-title-text'])
+    vendas = 0
+    if vendas_str:
+        m = re.search(r'([\d\.,]+)', vendas_str.replace('.', '').replace(',', ''))
+        vendas = int(m.group(1)) if m else 0
 
     # — Link afiliado —
     link_afiliado = get_affiliate_link(page, url)
@@ -286,6 +295,7 @@ def scrape_produto(page: Page, url: str) -> dict | None:
         'desconto':   desconto,
         'plataforma': 'Amazon',
         'link':       link_afiliado,
+        'vendas':     vendas or num_aval,  # usa vendas se tiver, senão avaliações
         'foto_url':   foto_url or '',
         'avaliacao':  avaliacao,
         'num_aval':   num_aval,
@@ -405,12 +415,17 @@ def main():
     qtd_str = input(f"📦 Quantos produtos quer baixar? (Enter para usar {MAX_PRODUTOS}): ").strip()
     qtd = int(qtd_str) if qtd_str.isdigit() and int(qtd_str) > 0 else MAX_PRODUTOS
 
-    print(f"\n🚀 Buscando '{termo}' · preço máximo: R$ {limite:.2f} · limite: {qtd} produtos\n")
+    # opção de vendas
+    min_vendas_str = input(f"⭐ Mínimo de vendas/avaliações (Enter para {MIN_VENDAS}): ").strip()
+    min_vendas = int(min_vendas_str) if min_vendas_str.isdigit() else MIN_VENDAS
+
+    print(f"\n🚀 Buscando '{termo}' · R$ {limite:.2f} · {qtd} produtos · min {min_vendas} vendas\n")
 
     history = load_history()
     produtos_novos = []
     ignorados_preco = 0
     ignorados_hist  = 0
+    ignorados_vendas = 0
 
     with sync_playwright() as p:
         browser = p.firefox.launch(headless=False)
@@ -463,6 +478,12 @@ def main():
                 ignorados_hist += 1
                 continue
 
+            # filtro vendas
+            if min_vendas > 0 and dados.get('vendas', 0) < min_vendas:
+                print(f"       ⏭ Poucas vendas/avaliações ({dados.get('vendas', 0)} < {min_vendas})\n")
+                ignorados_vendas += 1
+                continue
+
             registrar(dados['nome'], history)
             produtos_novos.append(dados)
 
@@ -472,8 +493,44 @@ def main():
             time.sleep(random.uniform(2, 4))
 
         browser.close()
+    
+    if not produtos_novos:
+        print("❌ Nenhum produto novo foi coletado após os filtros.")
+        return
 
-    # 3. Salva histórico
+    # 3. Seleção final do usuário
+    print("\n" + "="*55)
+    print(f"  📦 {len(produtos_novos)} PRODUTOS ENCONTRADOS")1
+    print("="*55)
+    for idx, p in enumerate(produtos_novos, 1):
+        vendas_txt = f"({p.get('vendas', 0)} vendas/aval)" if p.get('vendas') else ""
+        print(f"  {idx:2d}. {p['nome'][:60]:60} | {p['preco']:10} {vendas_txt}")
+    
+    print("-" * 55)
+    excluir_str = input("\n🚫 Digite os números para EXCLUIR (ex: 1-5,7,12) ou Enter para manter todos: ").strip()
+    
+    if excluir_str:
+        try:
+            excluir_indices = set()
+            partes = excluir_str.split(',')
+            for parte in partes:
+                parte = parte.strip()
+                if '-' in parte:
+                    inicio, fim = map(int, parte.split('-'))
+                    for i in range(inicio, fim + 1):
+                        excluir_indices.add(i)
+                elif parte.isdigit():
+                    excluir_indices.add(int(parte))
+            
+            # Remove (ajustando para 0-based index)
+            produtos_finais = [p for i, p in enumerate(produtos_novos, 1) if i not in excluir_indices]
+            n_excluidos = len(produtos_novos) - len(produtos_finais)
+            produtos_novos = produtos_finais
+            print(f"  ✅ {n_excluidos} produtos removidos da lista final.")
+        except Exception as e:
+            print(f"  ⚠️ Erro ao processar exclusões: {e}. Mantendo lista original.")
+
+    # 4. Salva histórico
     save_history(history)
 
     # 4. Merge inteligente com produtos.json
@@ -486,6 +543,7 @@ def main():
     print(f"  📦 {n_amazon_antigos} produtos antigos da Amazon mantidos")
     print(f"  ⏭  {ignorados_preco} ignorados (preço acima do limite)")
     print(f"  ⏭  {ignorados_hist} ignorados (já vistos recentemente)")
+    print(f"  ⏭  {ignorados_vendas} ignorados (poucas vendas)")
     print(f"  📄 Total no arquivo: {n_total} produtos")
     print(f"  💾 Arquivo salvo: {ARQUIVO_SAIDA}")
     print("=" * 55)

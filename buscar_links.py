@@ -29,16 +29,25 @@ import time
 import random
 import hashlib
 from datetime import datetime
+import csv
+import requests
 from playwright.sync_api import sync_playwright, Page
 
 # =============================================
 # CONFIGURAÇÕES
 # =============================================
-ARQUIVO_LINKS     = r'D:\.drive_google\mminis\links.txt'
+ARQUIVO_LINKS     = r'\links.txt'
 ARQUIVO_SAIDA     = 'produtos.json'
 ARQUIVO_HISTORICO = 'deal_history.json'
 ARQUIVO_SESSAO_AM = 'session.json'
 ARQUIVO_SESSAO_ML = 'session_ml.json'
+
+# --- ABAIXO: Link do Google Sheets (Opcional) ---
+# 1. Crie uma planilha no Google Sheets e cole os links na primeira coluna.
+# 2. Vá em Arquivo > Compartilhar > Publicar na web.
+# 3. Escolha "Valores separados por vírgula (.csv)" e clique em Publicar.
+# 4. Cole o link gerado abaixo:
+GOOGLE_SHEET_URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbBLKgjFglQH0JFpOx7XxKnWD1fDDVnia-ufRbOgdqm34ITVD5twQAd1Aw9drYTecWwV2XMzXTMdmn/pub?gid=0&single=true&output=csv' 
 
 
 # =============================================
@@ -110,50 +119,61 @@ def registrar(titulo: str, history: dict, plataforma: str):
 
 
 # =============================================
-# LER links.txt
+# LER links (Local + Google Sheets)
 # =============================================
 
 def ler_links() -> list[str]:
-    """Lê links.txt e retorna lista de URLs válidas."""
-    if not os.path.exists(ARQUIVO_LINKS):
-        # cria a pasta se não existir (ex: primeira vez)
+    """Lê links de fontes locais e remotas (Google Sheets)."""
+    urls = []
+
+    # 1. Tenta ler do Google Sheets se configurado
+    if GOOGLE_SHEET_URL:
+        print(f"🌐 Verificando Google Sheets...")
+        try:
+            res = requests.get(GOOGLE_SHEET_URL, timeout=15)
+            if res.ok:
+                linhas = res.text.splitlines()
+                reader = csv.reader(linhas)
+                for row in reader:
+                    if row:
+                        url = row[0].strip()
+                        if url.startswith('http'):
+                            urls.append(url)
+            else:
+                print(f"  ⚠️  Erro ao acessar Google Sheets (Status: {res.status_code})")
+        except Exception as e:
+            print(f"  ⚠️  Falha ao conectar ao Google Sheets: {e}")
+
+    # 2. Tenta ler do arquivo local links.txt
+    if os.path.exists(ARQUIVO_LINKS):
+        with open(ARQUIVO_LINKS, 'r', encoding='utf-8') as f:
+            for linha in f:
+                linha = linha.strip()
+                if not linha or linha.startswith('#'):
+                    continue
+                # Se for uma linha de CSV colada por engano, tenta pegar a primeira parte
+                url = linha.split(',')[0].strip() if ',' in linha and not linha.startswith('http') else linha
+                if url.startswith('http'):
+                    urls.append(url)
+    else:
+        # Cria arquivo local como backup se não existir
         os.makedirs(os.path.dirname(ARQUIVO_LINKS), exist_ok=True)
         with open(ARQUIVO_LINKS, 'w', encoding='utf-8') as f:
-            f.write("""# links.txt — mminis
-# Cole aqui os links que você encontrou durante suas pesquisas.
-# Um link por linha. Linhas começando com # são comentários.
-# Funciona com Amazon e Mercado Livre.
-# Este arquivo está na pasta do Google Drive — edite pelo celular também!
-#
-# ─── AMAZON ────────────────────────────────────────────
-# https://www.amazon.com.br/dp/B0XXXXXXXXX
-# https://amzn.to/XXXXXXXXX
-#
-# ─── MERCADO LIVRE ─────────────────────────────────────
-# https://www.mercadolivre.com.br/...
-#
-# Cole seus links abaixo desta linha:
+            f.write("# links.txt — mminis\n# Cole links aqui ou use o Google Sheets no buscar_links.py\n\n")
 
-""")
-        print(f"\n📄 Arquivo criado em:\n   {ARQUIVO_LINKS}")
-        print("   Cole seus links lá (pelo PC ou celular via Google Drive)")
-        print("   e rode o script novamente.\n")
-        return []
+    # Filtra links válidos (Amazon ou ML) e remove duplicados
+    urls_unicas = []
+    seen = set()
+    for u in urls:
+        if u in seen: continue
+        if any(d in u for d in ['amazon.com.br', 'amzn.to', 'mercadolivre.com.br', 'mercadolivre.com']):
+            urls_unicas.append(u)
+            seen.add(u)
+        else:
+            u_str = str(u)
+            print(f"  ⚠️  Link ignorado (plataforma não reconhecida): {u_str[:60]}")
 
-    urls = []
-    with open(ARQUIVO_LINKS, 'r', encoding='utf-8') as f:
-        for linha in f:
-            linha = linha.strip()
-            if not linha or linha.startswith('#'):
-                continue
-            # aceita amazon, amzn.to e mercadolivre
-            if any(d in linha for d in ['amazon.com.br', 'amzn.to', 'mercadolivre.com.br', 'mercadolivre.com']):
-                if linha not in urls:
-                    urls.append(linha)
-            else:
-                print(f"  ⚠️  Link ignorado (plataforma não reconhecida): {linha[:60]}")
-
-    return urls
+    return urls_unicas
 
 def detectar_plataforma(url: str) -> str:
     if 'amazon.com.br' in url or 'amzn.to' in url:
