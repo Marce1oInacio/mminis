@@ -749,29 +749,30 @@
     }
 
 
-    .app {
-      grid-template-columns: 1fr
-    }
+    @media (max-width: 900px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
 
-    .sidebar {
-      position: relative;
-      height: auto;
-      flex-direction: row;
-      flex-wrap: wrap;
-      padding: 16px
-    }
+      .sidebar {
+        position: relative;
+        height: auto;
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding: 16px;
+      }
 
-    .sidebar-section {
-      display: none
-    }
+      .sidebar-section {
+        display: none;
+      }
 
-    .main {
-      padding: 24px 16px
-    }
+      .main {
+        padding: 24px 16px;
+      }
 
-    .form-grid {
-      grid-template-columns: 1fr
-    }
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -1036,7 +1037,8 @@
                 <div class="step-title">Cole no GitHub</div>
                 <div class="step-desc">Abra <code>github.com/Marce1oInacio/mminis</code>, clique no
                   <code>index.html</code>, depois no lápis ✏️. Encontre <code>&lt;!-- FIM PRODUTOS --&gt;</code> e cole
-                  o código antes dessa linha.</div>
+                  o código antes dessa linha.
+                </div>
               </div>
             </div>
             <div class="step">
@@ -1076,7 +1078,8 @@
                 <div class="step-title">Cole no index.html</div>
                 <div class="step-desc">Mesmo processo dos produtos — cole antes de
                   <code>&lt;!-- FIM ARTIGOS --&gt;</code>. Na primeira publicação, apague também o bloco
-                  <code>article-empty</code>.</div>
+                  <code>article-empty</code>.
+                </div>
               </div>
             </div>
           </div>
@@ -1098,7 +1101,8 @@
               <div class="step-content">
                 <div class="step-title">Remover produto</div>
                 <div class="step-desc">No GitHub, edite o <code>index.html</code> e apague o bloco entre
-                  <code>&lt;!-- PRODUTO --&gt;</code> e <code>&lt;!-- /PRODUTO --&gt;</code> correspondente.</div>
+                  <code>&lt;!-- PRODUTO --&gt;</code> e <code>&lt;!-- /PRODUTO --&gt;</code> correspondente.
+                </div>
               </div>
             </div>
             <div class="step">
@@ -1204,14 +1208,25 @@ Hot Wheels Treasure Hunt,Super TH · Edição limitada,R$ 89,90,Mercado Livre,ht
             atualizado.</p>
         </div>
 
-        <!-- PASSO 1: upload do JSON -->
+        <!-- PASSO 1: entrada do JSON -->
         <div class="card">
-          <div class="card-title">📂 1. Carregue o produtos.json atual</div>
-          <div class="img-upload" style="margin-bottom:0">
-            <input type="file" accept=".json" id="ger-file" onchange="carregarJSON(this)">
-            <div class="img-upload-icon">📄</div>
-            <div class="img-upload-text">
-              <strong>Clique ou arraste</strong> o produtos.json aqui
+          <div class="card-title">📂 1. Carregue ou Cole o produtos.json atual</div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="img-upload"
+              style="margin-bottom:0; height: 160px; display: flex; flex-direction: column; justify-content: center;">
+              <input type="file" accept=".json" id="ger-file" onchange="carregarJSON(this)">
+              <div class="img-upload-icon">📄</div>
+              <div class="img-upload-text">
+                <div id="ger-arquivo-nome"><strong>Carregar arquivo</strong></div>
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <textarea id="ger-paste" placeholder="Ou cole o conteúdo do produtos.json aqui..."
+                style="height: 120px; font-family: monospace; font-size: 0.75rem;"></textarea>
+              <button class="btn btn-secondary" onclick="carregarJSONPaste()"
+                style="width: 100%; justify-content: center;">
+                📥 Carregar da colagem
+              </button>
             </div>
           </div>
         </div>
@@ -1237,12 +1252,18 @@ Hot Wheels Treasure Hunt,Super TH · Edição limitada,R$ 89,90,Mercado Livre,ht
 
           <div id="ger-lista" style="display:flex;flex-direction:column;gap:8px"></div>
 
-          <div class="btn-row" style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border)">
-            <button class="btn btn-primary" id="ger-btn-remover" onclick="gerRemover()" style="display:none">
-              🗑️ Remover selecionados e baixar JSON
-            </button>
-            <button class="btn btn-green" onclick="gerBaixarCompleto()">
-              ⬇️ Baixar JSON sem alterações
+          <div class="btn-row"
+            style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border); justify-content: space-between;">
+            <div style="display: flex; gap: 10px;">
+              <button class="btn btn-primary" id="ger-btn-salvar" onclick="gerSalvar()" style="display:none">
+                🗑️ Remover e Salvar
+              </button>
+              <button class="btn btn-green" id="ger-btn-copiar" onclick="gerCopiar()" style="display:none">
+                📋 Remover e Copiar JSON
+              </button>
+            </div>
+            <button class="btn btn-secondary" onclick="gerBaixar()">
+              ⬇️ Baixar atual
             </button>
           </div>
         </div>
@@ -1283,6 +1304,229 @@ Hot Wheels Treasure Hunt,Super TH · Edição limitada,R$ 89,90,Mercado Livre,ht
       <div class="toast" id="toast">✅ Copiado com sucesso!</div>
 
       <script>
+        // ─── GERENCIAR: FILE SYSTEM ACCESS API ─────────────
+        let gerProdutos = [];
+        let gerMarcados = new Set();
+        let gerFileHandle = null; // guarda o handle do arquivo para sobrescrever
+        const EMOJIS_GER = { 'Amazon': '📦', 'Shopee': '🛍️', 'Mercado Livre': '🏷️' };
+        const PLAT_CLASS = { 'Amazon': 'ger-plat-amazon', 'Shopee': 'ger-plat-shopee', 'Mercado Livre': 'ger-plat-ml' };
+
+        async function gerAbrirArquivo() {
+          // Verifica suporte
+          if (!window.showOpenFilePicker) {
+            document.getElementById('ger-fallback').style.display = 'block';
+            return;
+          }
+          try {
+            const [fh] = await window.showOpenFilePicker({
+              types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+              multiple: false
+            });
+            gerFileHandle = fh;
+            const file = await fh.getFile();
+            document.getElementById('ger-arquivo-nome').innerHTML =
+              `📄 <strong>${file.name}</strong> <span style="color:var(--green)">(✓ conectado — pode salvar direto)</span>`;
+            const text = await file.text();
+            gerCarregarDados(JSON.parse(text));
+          } catch (e) {
+            if (e.name !== 'AbortError') alert('Erro ao abrir arquivo: ' + e.message);
+          }
+        }
+
+        function carregarJSON(input) {
+          // fallback sem File System Access API
+          const file = input.files[0];
+          if (!file) return;
+          gerFileHandle = null;
+          document.getElementById('ger-arquivo-nome').innerHTML =
+            `📄 <strong>${file.name}</strong> <span style="color:#b45309">(⚠️ modo leitura — salvar baixará o arquivo)</span>`;
+          const reader = new FileReader();
+          reader.onload = e => {
+            try { gerCarregarDados(JSON.parse(e.target.result)); }
+            catch { alert('JSON inválido.'); }
+          };
+          reader.readAsText(file, 'UTF-8');
+        }
+
+        function carregarJSONPaste() {
+          const text = document.getElementById('ger-paste').value;
+          if (!text.trim()) { alert('Cole o JSON primeiro.'); return; }
+          try {
+            gerCarregarDados(JSON.parse(text));
+          } catch (e) {
+            alert('JSON inválido: ' + e.message);
+          }
+        }
+
+        function gerCarregarDados(data) {
+          if (!Array.isArray(data)) { alert('Arquivo inválido.'); return; }
+          gerProdutos = data;
+          gerMarcados.clear();
+          gerFiltrar();
+          document.getElementById('ger-lista-card').style.display = 'block';
+          document.getElementById('ger-ok-card').style.display = 'none';
+          document.getElementById('ger-lista-card').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function renderizarLista(filtro = '') {
+          const lista = document.getElementById('ger-lista');
+          const visiveis = gerProdutos
+            .map((p, i) => ({ p, i }))
+            .filter(({ p }) => filtro === '' ||
+              (p.nome || '').toLowerCase().includes(filtro) ||
+              (p.plataforma || '').toLowerCase().includes(filtro));
+
+          lista.innerHTML = visiveis.map(({ p, i }) => {
+            const nome = p.nome || 'Sem nome';
+            const plat = p.plataforma || '';
+            const preco = p.preco || '';
+            const foto = p.foto_url || '';
+            const emoji = EMOJIS_GER[plat] || '🏎️';
+            const platCls = PLAT_CLASS[plat] || '';
+            const marcado = gerMarcados.has(i);
+
+            return `
+  <div class="ger-item${marcado ? ' marcado' : ''}" id="ger-item-${i}" onclick="gerToggle(${i})">
+    <div class="ger-check">${marcado ? '✕' : ''}</div>
+    <div class="ger-foto">
+      ${foto ? `<img src="${foto}" alt="${nome}" onerror="this.style.display='none'">` : emoji}
+    </div>
+    <div class="ger-info">
+      <div class="ger-nome">${nome}</div>
+      <div class="ger-meta">
+        <span class="ger-plat ${platCls}">${plat}</span>
+        ${p.atualizado ? `<span>📅 ${p.atualizado}</span>` : ''}
+        <span>${preco}</span>
+      </div>
+    </div>
+    ${marcado ? '<span class="ger-del-badge">Remover</span>' : ''}
+  </div>`;
+          }).join('');
+
+          atualizarContador();
+        }
+
+        function gerToggle(idx) {
+          gerMarcados.has(idx) ? gerMarcados.delete(idx) : gerMarcados.add(idx);
+          renderizarLista(document.getElementById('ger-filtro').value.toLowerCase());
+        }
+
+        function gerFiltrar() {
+          renderizarLista(document.getElementById('ger-filtro').value.toLowerCase());
+        }
+
+        function gerSelecionarTodos() {
+          const f = document.getElementById('ger-filtro').value.toLowerCase();
+          gerProdutos.forEach((p, i) => {
+            const ok = f === '' || (p.nome || '').toLowerCase().includes(f) || (p.plataforma || '').toLowerCase().includes(f);
+            if (ok) gerMarcados.add(i);
+          });
+          renderizarLista(f);
+        }
+
+        function gerDesmarcarTodos() {
+          gerMarcados.clear();
+          renderizarLista(document.getElementById('ger-filtro').value.toLowerCase());
+        }
+
+        function gerMarcarAntigos(dias) {
+          if (!dias || !gerProdutos.length) return;
+          const limite = Number(dias) * 86400000;
+          const agora = Date.now();
+          gerProdutos.forEach((p, i) => {
+            if (!p.atualizado) return;
+            const [datePart, timePart] = p.atualizado.split(' ');
+            const [d, m, y] = datePart.split('/');
+            const [hh, mm] = (timePart || '00:00').split(':');
+            const ts = new Date(y, m - 1, d, hh, mm).getTime();
+            if (agora - ts > limite) gerMarcados.add(i);
+          });
+          renderizarLista(document.getElementById('ger-filtro').value.toLowerCase());
+          document.getElementById('ger-limpar-old').value = '';
+        }
+
+        function atualizarContador() {
+          const t = gerProdutos.length, m = gerMarcados.size;
+          document.getElementById('ger-contador').textContent =
+            `${t} produtos · ${m} marcados para remover`;
+
+          const btnS = document.getElementById('ger-btn-salvar');
+          const btnC = document.getElementById('ger-btn-copiar');
+          const show = m > 0;
+          [btnS, btnC].forEach(b => b.style.display = show ? 'inline-flex' : 'none');
+
+          // label do botão salvar reflete o modo
+          btnS.textContent = gerFileHandle
+            ? `🗑️ Remover ${m} e Salvar no arquivo`
+            : `🗑️ Remover ${m} e Baixar`;
+        }
+
+        function _jsonAtualizado() {
+          return gerProdutos.filter((_, i) => !gerMarcados.has(i));
+        }
+
+        async function gerSalvar() {
+          if (!gerMarcados.size) return;
+          const n = gerMarcados.size;
+          const rest = gerProdutos.length - n;
+          if (!confirm(`Remover ${n} produto(s)? Restarão ${rest}.`)) return;
+
+          const novo = _jsonAtualizado();
+
+          if (gerFileHandle) {
+            try {
+              // pede permissão de escrita
+              const perm = await gerFileHandle.requestPermission({ mode: 'readwrite' });
+              if (perm !== 'granted') { alert('Permissão de escrita negada.'); return; }
+              const writable = await gerFileHandle.createWritable();
+              await writable.write(JSON.stringify(novo, null, 2));
+              await writable.close();
+              mostrarResultado(novo, n, 'salvo');
+            } catch (e) {
+              alert('Erro ao salvar: ' + e.message + '\n\nUsando download como fallback.');
+              _baixar(novo);
+            }
+          } else {
+            _baixar(novo);
+            mostrarResultado(novo, n, 'baixado');
+          }
+
+          gerProdutos = novo;
+          gerMarcados.clear();
+          renderizarLista();
+        }
+
+        function gerCopiar() {
+          if (!gerMarcados.size) return;
+          const novo = _jsonAtualizado();
+          navigator.clipboard.writeText(JSON.stringify(novo, null, 2))
+            .then(() => mostrarToast('✅ JSON sem os itens removidos copiado!'));
+        }
+
+        function gerBaixar() {
+          if (!gerProdutos.length) { alert('Nenhum arquivo aberto.'); return; }
+          _baixar(gerProdutos);
+          mostrarToast('✅ Download iniciado!');
+        }
+
+        function _baixar(data) {
+          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'produtos.json';
+          a.click();
+          URL.revokeObjectURL(a.href);
+        }
+
+        function mostrarResultado(novo, removidos, modo) {
+          const card = document.getElementById('ger-ok-card');
+          document.getElementById('ger-ok-msg').textContent =
+            `${removidos} produto(s) removido(s). Restam ${novo.length} no arquivo (${modo === 'salvo' ? 'arquivo salvo diretamente no disco' : 'arquivo baixado'}).`;
+          card.style.display = 'block';
+          card.scrollIntoView({ behavior: 'smooth' });
+          mostrarToast(`✅ ${removidos} removido(s)!`);
+        }
+
         // ─── NAVEGAÇÃO ──────────────────────────────────────
         function showPage(id) {
           document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -1458,249 +1702,95 @@ ${imgContent}
       <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
       <script>
-        let gerProdutos = [];   // todos os produtos carregados
-        let gerMarcados = new Set(); // índices marcados para remoção
-        const EMOJIS_GER = { 'Amazon': '📦', 'Shopee': '🛍️', 'Mercado Livre': '🏷️' };
-        const PLAT_CLASS = { 'Amazon': 'ger-plat-amazon', 'Shopee': 'ger-plat-shopee', 'Mercado Livre': 'ger-plat-ml' };
+        // ─── COLUNAS ESPERADAS ───────────────────────────────
+        const COLUNAS = ['nome', 'descricao', 'preco', 'plataforma', 'link', 'foto_url'];
+        const EMOJIS = { 'Shopee': '🏎️', 'Amazon': '📦', 'Mercado Livre': '🏷️' };
 
-        function carregarJSON(input) {
+        let importRows = [];
+
+        // ─── IMPORTAR ARQUIVO ────────────────────────────────
+        function importarArquivo(input) {
           const file = input.files[0];
           if (!file) return;
+          const ext = file.name.split('.').pop().toLowerCase();
+
+          if (ext === 'xlsx' || ext === 'xls') {
+            lerXLSX(file);
+          } else {
+            // csv ou txt
+            const reader = new FileReader();
+            reader.onload = e => processarCSV(e.target.result);
+            reader.readAsText(file, 'UTF-8');
+          }
+        }
+
+        function lerXLSX(file) {
           const reader = new FileReader();
           reader.onload = e => {
-            try {
-              const data = JSON.parse(e.target.result);
-              if (!Array.isArray(data)) { alert('Arquivo inválido — esperado um array JSON.'); return; }
-              gerProdutos = data;
-              gerMarcados.clear();
-              renderizarLista();
-              document.getElementById('ger-lista-card').style.display = 'block';
-              document.getElementById('ger-instrucoes-card').style.display = 'none';
-              document.getElementById('ger-lista-card').scrollIntoView({ behavior: 'smooth' });
-            } catch (err) {
-              alert('Erro ao ler o arquivo. Verifique se é um JSON válido.');
-            }
+            const wb = XLSX.read(e.target.result, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const data = XLSX.utils.sheet_to_csv(ws);
+            processarCSV(data);
           };
-          reader.readAsText(file, 'UTF-8');
+          reader.readAsArrayBuffer(file);
         }
 
-        function renderizarLista(filtro = '') {
-          const lista = document.getElementById('ger-lista');
-          lista.innerHTML = gerProdutos.map((p, i) => {
-            const nome = p.nome || 'Sem nome';
-            const plat = p.plataforma || '';
-            const preco = p.preco || '';
-            const foto = p.foto_url || '';
-            const emoji = EMOJIS_GER[plat] || '🏎️';
-            const platCls = PLAT_CLASS[plat] || '';
-            const marcado = gerMarcados.has(i);
-            const visivel = filtro === '' ||
-              nome.toLowerCase().includes(filtro) ||
-              plat.toLowerCase().includes(filtro);
+        function processarCSV(texto) {
+          const linhas = texto.trim().split('\n').map(l => l.trim()).filter(Boolean);
+          if (linhas.length < 2) { alert('Arquivo vazio ou sem dados.'); return; }
 
-            return `
-    <div class="ger-item${marcado ? ' marcado' : ''}${!visivel ? ' oculto' : ''}"
-         id="ger-item-${i}" onclick="gerToggle(${i})">
-      <div class="ger-check">${marcado ? '✕' : ''}</div>
-      <div class="ger-foto">
-        ${foto
-                ? `<img src="${foto}" alt="${nome}" onerror="this.style.display='none'">`
-                : emoji}
-      </div>
-      <div class="ger-info">
-        <div class="ger-nome">${nome}</div>
-        <div class="ger-meta">
-          <span class="ger-plat ${platCls}">${plat}</span>
-          ${p.atualizado ? `<span>📅 ${p.atualizado}</span>` : ''}
-        </div>
-      </div>
-      <div class="ger-preco">${preco}</div>
-      ${marcado ? '<span class="ger-del-badge">Remover</span>' : ''}
-    </div>`;
-          }).join('');
+          // detecta separador: vírgula ou ponto-e-vírgula
+          const sep = linhas[0].includes(';') ? ';' : ',';
 
-          atualizarContador();
-        }
+          const header = linhas[0].split(sep).map(h => h.trim().toLowerCase().replace(/[^a-z_]/g, ''));
+          const rows = [];
 
-        function gerToggle(idx) {
-          if (gerMarcados.has(idx)) {
-            gerMarcados.delete(idx);
-          } else {
-            gerMarcados.add(idx);
+          for (let i = 1; i < linhas.length; i++) {
+            const vals = splitCSVLine(linhas[i], sep);
+            const obj = {};
+            header.forEach((h, idx) => { obj[h] = (vals[idx] || '').trim(); });
+            // normaliza chave "foto_url" mesmo se vier como "foto url" ou "foturl"
+            if (!obj.foto_url) obj.foto_url = obj['foto url'] || obj['foto'] || '';
+            if (obj.nome) rows.push(obj);
           }
-          // re-renderiza só o item clicado para ser rápido
-          const filtro = document.getElementById('ger-filtro').value.toLowerCase();
-          renderizarLista(filtro);
+
+          if (rows.length === 0) { alert('Nenhum produto encontrado. Verifique se o arquivo segue o modelo.'); return; }
+
+          importRows = rows;
+          renderizarTabela(rows, header);
         }
 
-        function gerFiltrar() {
-          const filtro = document.getElementById('ger-filtro').value.toLowerCase();
-          renderizarLista(filtro);
-        }
-
-        function gerSelecionarTodos() {
-          const filtro = document.getElementById('ger-filtro').value.toLowerCase();
-          gerProdutos.forEach((p, i) => {
-            const nome = (p.nome || '').toLowerCase();
-            const plat = (p.plataforma || '').toLowerCase();
-            if (filtro === '' || nome.includes(filtro) || plat.includes(filtro)) {
-              gerMarcados.add(i);
-            }
-          });
-          renderizarLista(filtro);
-        }
-
-        function gerDesmarcarTodos() {
-          gerMarcados.clear();
-          renderizarLista(document.getElementById('ger-filtro').value.toLowerCase());
-        }
-
-        function atualizarContador() {
-          const total = gerProdutos.length;
-          const marcados = gerMarcados.size;
-          const restam = total - marcados;
-          document.getElementById('ger-contador').textContent =
-            `${total} produtos · ${marcados} marcados · ${restam} restam`;
-
-          const btn = document.getElementById('ger-btn-remover');
-          if (marcados > 0) {
-            btn.style.display = 'inline-flex';
-            btn.textContent = `🗑️ Remover ${marcados} produto${marcados > 1 ? 's' : ''} e baixar JSON`;
-          } else {
-            btn.style.display = 'none';
+        // split respeitando campos entre aspas
+        function splitCSVLine(line, sep) {
+          const result = [];
+          let current = '';
+          let inQuotes = false;
+          for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (ch === '"') { inQuotes = !inQuotes; }
+            else if (ch === sep && !inQuotes) { result.push(current); current = ''; }
+            else { current += ch; }
           }
+          result.push(current);
+          return result;
         }
 
-        function gerRemover() {
-          if (gerMarcados.size === 0) return;
+        // ─── RENDERIZAR TABELA DE PREVIEW ───────────────────
+        function renderizarTabela(rows, header) {
+          const thead = document.getElementById('import-thead');
+          const tbody = document.getElementById('import-tbody');
 
-          const nomes = [...gerMarcados].map(i => gerProdutos[i]?.nome || `#${i}`);
-          const confirm_msg = `Remover ${gerMarcados.size} produto(s)?\n\n${nomes.slice(0, 5).join('\n')}${nomes.length > 5 ? `\n... e mais ${nomes.length - 5}` : ''}`;
+          // cabeçalho
+          const labels = { nome: 'Nome', descricao: 'Descrição', preco: 'Preço', plataforma: 'Plataforma', link: 'Link', foto_url: 'Foto URL' };
+          thead.innerHTML = ['#', ...COLUNAS.filter(c => header.includes(c) || c === 'nome')]
+            .map(c => `<th style="text-align:left;padding:8px 12px;border-bottom:2px solid var(--border);font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">${labels[c] || c}</th>`)
+            .join('');
 
-          if (!confirm(confirm_msg)) return;
-
-          const novo = gerProdutos.filter((_, i) => !gerMarcados.has(i));
-          baixarJSON(novo);
-
-          // feedback visual
-          gerProdutos = novo;
-          gerMarcados.clear();
-          renderizarLista();
-          document.getElementById('ger-instrucoes-card').style.display = 'block';
-          document.getElementById('ger-instrucoes-card').scrollIntoView({ behavior: 'smooth' });
-          mostrarToast(`✅ JSON com ${novo.length} produtos baixado!`);
-        }
-
-        function gerBaixarCompleto() {
-          if (gerProdutos.length === 0) { alert('Nenhum arquivo carregado.'); return; }
-          baixarJSON(gerProdutos);
-          mostrarToast('✅ JSON baixado!');
-        }
-
-        function baixarJSON(data) {
-          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-          const a = document.createElement('a');
-          a.href = URL.createObjectURL(blob);
-          a.download = 'produtos.json';
-          a.click();
-          URL.revokeObjectURL(a.href);
-        }
-      </script>
-</body>
-
-</html>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
-<script>
-  // ─── COLUNAS ESPERADAS ───────────────────────────────
-  const COLUNAS = ['nome', 'descricao', 'preco', 'plataforma', 'link', 'foto_url'];
-  const EMOJIS = { 'Shopee': '🏎️', 'Amazon': '📦', 'Mercado Livre': '🏷️' };
-
-  let importRows = [];
-
-  // ─── IMPORTAR ARQUIVO ────────────────────────────────
-  function importarArquivo(input) {
-    const file = input.files[0];
-    if (!file) return;
-    const ext = file.name.split('.').pop().toLowerCase();
-
-    if (ext === 'xlsx' || ext === 'xls') {
-      lerXLSX(file);
-    } else {
-      // csv ou txt
-      const reader = new FileReader();
-      reader.onload = e => processarCSV(e.target.result);
-      reader.readAsText(file, 'UTF-8');
-    }
-  }
-
-  function lerXLSX(file) {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const wb = XLSX.read(e.target.result, { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const data = XLSX.utils.sheet_to_csv(ws);
-      processarCSV(data);
-    };
-    reader.readAsArrayBuffer(file);
-  }
-
-  function processarCSV(texto) {
-    const linhas = texto.trim().split('\n').map(l => l.trim()).filter(Boolean);
-    if (linhas.length < 2) { alert('Arquivo vazio ou sem dados.'); return; }
-
-    // detecta separador: vírgula ou ponto-e-vírgula
-    const sep = linhas[0].includes(';') ? ';' : ',';
-
-    const header = linhas[0].split(sep).map(h => h.trim().toLowerCase().replace(/[^a-z_]/g, ''));
-    const rows = [];
-
-    for (let i = 1; i < linhas.length; i++) {
-      const vals = splitCSVLine(linhas[i], sep);
-      const obj = {};
-      header.forEach((h, idx) => { obj[h] = (vals[idx] || '').trim(); });
-      // normaliza chave "foto_url" mesmo se vier como "foto url" ou "foturl"
-      if (!obj.foto_url) obj.foto_url = obj['foto url'] || obj['foto'] || '';
-      if (obj.nome) rows.push(obj);
-    }
-
-    if (rows.length === 0) { alert('Nenhum produto encontrado. Verifique se o arquivo segue o modelo.'); return; }
-
-    importRows = rows;
-    renderizarTabela(rows, header);
-  }
-
-  // split respeitando campos entre aspas
-  function splitCSVLine(line, sep) {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') { inQuotes = !inQuotes; }
-      else if (ch === sep && !inQuotes) { result.push(current); current = ''; }
-      else { current += ch; }
-    }
-    result.push(current);
-    return result;
-  }
-
-  // ─── RENDERIZAR TABELA DE PREVIEW ───────────────────
-  function renderizarTabela(rows, header) {
-    const thead = document.getElementById('import-thead');
-    const tbody = document.getElementById('import-tbody');
-
-    // cabeçalho
-    const labels = { nome: 'Nome', descricao: 'Descrição', preco: 'Preço', plataforma: 'Plataforma', link: 'Link', foto_url: 'Foto URL' };
-    thead.innerHTML = ['#', ...COLUNAS.filter(c => header.includes(c) || c === 'nome')]
-      .map(c => `<th style="text-align:left;padding:8px 12px;border-bottom:2px solid var(--border);font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">${labels[c] || c}</th>`)
-      .join('');
-
-    // linhas
-    tbody.innerHTML = rows.map((row, i) => {
-      const plat = row.plataforma || 'Shopee';
-      const platBadge = `<span class="badge badge-${plat.toLowerCase().replace(' ', '-')}">${plat}</span>`;
-      return `<tr style="border-bottom:1px solid var(--border)">
+          // linhas
+          tbody.innerHTML = rows.map((row, i) => {
+            const plat = row.plataforma || 'Shopee';
+            const platBadge = `<span class="badge badge-${plat.toLowerCase().replace(' ', '-')}">${plat}</span>`;
+            return `<tr style="border-bottom:1px solid var(--border)">
       <td style="padding:8px 12px;color:var(--muted);font-size:.78rem">${i + 1}</td>
       <td style="padding:8px 12px;font-weight:600;font-size:.85rem">${escHtml(row.nome || '')}</td>
       <td style="padding:8px 12px;font-size:.82rem;color:var(--mid)">${escHtml(row.descricao || '')}</td>
@@ -1709,34 +1799,34 @@ ${imgContent}
       <td style="padding:8px 12px;font-size:.75rem;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${row.link ? '✅ ok' : '⚠️ sem link'}</td>
       <td style="padding:8px 12px;font-size:.75rem;color:var(--muted)">${row.foto_url ? '🖼️ ok' : '—'}</td>
     </tr>`;
-    }).join('');
+          }).join('');
 
-    document.getElementById('import-count-badge').textContent = `${rows.length} produto${rows.length > 1 ? 's' : ''}`;
-    document.getElementById('import-preview-card').style.display = 'block';
-    document.getElementById('import-output-card').style.display = 'none';
-    document.getElementById('import-preview-card').scrollIntoView({ behavior: 'smooth' });
-  }
+          document.getElementById('import-count-badge').textContent = `${rows.length} produto${rows.length > 1 ? 's' : ''}`;
+          document.getElementById('import-preview-card').style.display = 'block';
+          document.getElementById('import-output-card').style.display = 'none';
+          document.getElementById('import-preview-card').scrollIntoView({ behavior: 'smooth' });
+        }
 
-  // ─── GERAR CÓDIGO EM MASSA ───────────────────────────
-  function gerarCodigoMassa() {
-    if (!importRows.length) return;
+        // ─── GERAR CÓDIGO EM MASSA ───────────────────────────
+        function gerarCodigoMassa() {
+          if (!importRows.length) return;
 
-    const blocos = importRows.map(row => {
-      const nome = row.nome || '';
-      const desc = row.descricao || '';
-      const preco = row.preco || '';
-      const plat = row.plataforma || 'Shopee';
-      const link = row.link || '#';
-      const foto = row.foto_url || '';
+          const blocos = importRows.map(row => {
+            const nome = row.nome || '';
+            const desc = row.descricao || '';
+            const preco = row.preco || '';
+            const plat = row.plataforma || 'Shopee';
+            const link = row.link || '#';
+            const foto = row.foto_url || '';
 
-      let imgContent;
-      if (foto) {
-        imgContent = `          <img src="${escHtml(foto)}" alt="${escHtml(nome)}" style="width:100%;height:100%;object-fit:cover">`;
-      } else {
-        imgContent = `          ${EMOJIS[plat] || '🏎️'}`;
-      }
+            let imgContent;
+            if (foto) {
+              imgContent = `          <img src="${escHtml(foto)}" alt="${escHtml(nome)}" style="width:100%;height:100%;object-fit:cover">`;
+            } else {
+              imgContent = `          ${EMOJIS[plat] || '🏎️'}`;
+            }
 
-      return `      <!-- PRODUTO -->
+            return `      <!-- PRODUTO -->
       <div class="product-card">
         <div class="product-img">
 ${imgContent}
@@ -1750,62 +1840,62 @@ ${imgContent}
         </div>
       </div>
       <!-- /PRODUTO -->`;
-    });
+          });
 
-    const codigo = blocos.join('\n\n');
-    document.getElementById('import-output-code').textContent = codigo;
-    document.getElementById('import-output-card').style.display = 'block';
-    document.getElementById('import-output-card').scrollIntoView({ behavior: 'smooth' });
-  }
+          const codigo = blocos.join('\n\n');
+          document.getElementById('import-output-code').textContent = codigo;
+          document.getElementById('import-output-card').style.display = 'block';
+          document.getElementById('import-output-card').scrollIntoView({ behavior: 'smooth' });
+        }
 
-  function copiarMassa() {
-    navigator.clipboard.writeText(document.getElementById('import-output-code').textContent)
-      .then(() => mostrarToast());
-  }
+        function copiarMassa() {
+          navigator.clipboard.writeText(document.getElementById('import-output-code').textContent)
+            .then(() => mostrarToast());
+        }
 
-  function limparImport() {
-    importRows = [];
-    document.getElementById('import-file').value = '';
-    document.getElementById('import-preview-card').style.display = 'none';
-    document.getElementById('import-output-card').style.display = 'none';
-    document.getElementById('import-tbody').innerHTML = '';
-  }
+        function limparImport() {
+          importRows = [];
+          document.getElementById('import-file').value = '';
+          document.getElementById('import-preview-card').style.display = 'none';
+          document.getElementById('import-output-card').style.display = 'none';
+          document.getElementById('import-tbody').innerHTML = '';
+        }
 
-  // ─── BAIXAR MODELO ───────────────────────────────────
-  function baixarCSV() {
-    const conteudo = `nome,descricao,preco,plataforma,link,foto_url
+        // ─── BAIXAR MODELO ───────────────────────────────────
+        function baixarCSV() {
+          const conteudo = `nome,descricao,preco,plataforma,link,foto_url
 Hot Wheels Ferrari SF90,Série Car Culture 2025,R$ 49.90,Shopee,https://shopee.com.br/...,
 Hot Wheels Dodge Viper,Linha básica 2025,R$ 19.90,Amazon,https://amzn.to/...,
 Hot Wheels Treasure Hunt,Super TH · Edição limitada,R$ 89.90,Mercado Livre,https://produto.ml/...,`;
-    baixarArquivo('modelo-mminis.csv', conteudo, 'text/csv');
-  }
+          baixarArquivo('modelo-mminis.csv', conteudo, 'text/csv');
+        }
 
-  function baixarXLSX() {
-    const ws = XLSX.utils.aoa_to_sheet([
-      ['nome', 'descricao', 'preco', 'plataforma', 'link', 'foto_url'],
-      ['Hot Wheels Ferrari SF90', 'Série Car Culture 2025', 'R$ 49,90', 'Shopee', 'https://shopee.com.br/...', ''],
-      ['Hot Wheels Dodge Viper', 'Linha básica 2025', 'R$ 19,90', 'Amazon', 'https://amzn.to/...', ''],
-      ['Hot Wheels Treasure Hunt', 'Super TH · Edição limitada', 'R$ 89,90', 'Mercado Livre', 'https://produto.ml/...', ''],
-    ]);
-    // largura das colunas
-    ws['!cols'] = [40, 30, 12, 16, 40, 40].map(w => ({ wch: w }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Produtos');
-    XLSX.writeFile(wb, 'modelo-mminis.xlsx');
-  }
+        function baixarXLSX() {
+          const ws = XLSX.utils.aoa_to_sheet([
+            ['nome', 'descricao', 'preco', 'plataforma', 'link', 'foto_url'],
+            ['Hot Wheels Ferrari SF90', 'Série Car Culture 2025', 'R$ 49,90', 'Shopee', 'https://shopee.com.br/...', ''],
+            ['Hot Wheels Dodge Viper', 'Linha básica 2025', 'R$ 19,90', 'Amazon', 'https://amzn.to/...', ''],
+            ['Hot Wheels Treasure Hunt', 'Super TH · Edição limitada', 'R$ 89,90', 'Mercado Livre', 'https://produto.ml/...', ''],
+          ]);
+          // largura das colunas
+          ws['!cols'] = [40, 30, 12, 16, 40, 40].map(w => ({ wch: w }));
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, 'Produtos');
+          XLSX.writeFile(wb, 'modelo-mminis.xlsx');
+        }
 
-  function baixarArquivo(nome, conteudo, tipo) {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([conteudo], { type: tipo }));
-    a.download = nome;
-    a.click();
-  }
+        function baixarArquivo(nome, conteudo, tipo) {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(new Blob([conteudo], { type: tipo }));
+          a.download = nome;
+          a.click();
+        }
 
-  function copiarModelo() {
-    navigator.clipboard.writeText(document.getElementById('modelo-csv').textContent)
-      .then(() => mostrarToast());
-  }
-</script>
+        function copiarModelo() {
+          navigator.clipboard.writeText(document.getElementById('modelo-csv').textContent)
+            .then(() => mostrarToast());
+        }
+      </script>
 </body>
 
 </html>

@@ -566,6 +566,14 @@
         <div class="sec-title">Produtos em Destaque</div>
       </div>
 
+      <!-- BUSCA E FILTROS -->
+      <div class="search-wrap" style="max-width: 600px; margin: 0 auto 40px; position: relative;">
+        <input type="text" id="main-search" placeholder="🔍 Pesquisar modelo, marca ou plataforma..." 
+          style="width:100%; padding: 14px 20px; border-radius: 30px; background: var(--surface); border: 1px solid var(--border2); color: #fff; outline: none; transition: all 0.2s;"
+          oninput="filtrarProdutos()">
+        <div id="search-count" style="text-align: center; margin-top: 10px; font-size: 0.75rem; color: var(--muted);"></div>
+      </div>
+
       <div id="produtos-loading" class="produtos-loading">
         <div class="produtos-loading-icon">⚙️</div>
         <div>Carregando produtos...</div>
@@ -631,11 +639,18 @@
     const PLAT_CLS = { 'Amazon': 'ps-amazon', 'Shopee': 'ps-shopee', 'Mercado Livre': 'ps-ml' };
     const PLAT_EMOJI = { 'Amazon': '📦', 'Shopee': '🛍️', 'Mercado Livre': '🏷️' };
 
+    let produtosOriginais = [];
+
     function renderCard(p) {
+      const isEdit = new URLSearchParams(window.location.search).has('edit');
       const foto = p.foto_url
         ? `<img src="${p.foto_url}" alt="${p.nome}" onerror="this.style.display='none';this.parentElement.querySelector('.fb-emoji').style.display='flex'">` : '';
+      
+      const clickAction = isEdit ? `onclick="copiarNome('${p.nome.replace(/'/g, "\\'")}')" style="cursor:help;"` : '';
+      
       return `
-  <div class="product-card">
+  <div class="product-card" ${clickAction}>
+    ${isEdit ? '<div style="position:absolute;top:5px;right:5px;background:red;color:white;font-size:10px;padding:2px 5px;z-index:10;border-radius:3px">CLIQUE P/ COPIAR</div>' : ''}
     <div class="product-img">
       <span class="fb-emoji" style="${p.foto_url ? 'display:none' : 'display:flex'}">${PLAT_EMOJI[p.plataforma] || '🏎️'}</span>
       ${foto}
@@ -650,9 +665,27 @@
         ${p.preco_antigo ? `<div class="product-old-price">${p.preco_antigo}</div>` : ''}
         <div class="product-price">${p.preco}</div>
       </div>
-      <a href="${p.link}" target="_blank" rel="nofollow noopener sponsored" class="product-btn">Ver Produto →</a>
+      <a href="${p.link}" target="_blank" rel="nofollow noopener sponsored" class="product-btn" onclick="event.stopPropagation()">Ver Produto →</a>
     </div>
   </div>`;
+    }
+
+    function copiarNome(nome) {
+      navigator.clipboard.writeText(nome);
+      alert('Nome copiado para remoção: ' + nome);
+    }
+
+    function filtrarProdutos() {
+      const query = document.getElementById('main-search').value.toLowerCase();
+      const filtrados = produtosOriginais.filter(p => 
+        p.nome.toLowerCase().includes(query) || 
+        p.plataforma.toLowerCase().includes(query) ||
+        (p.descricao && p.descricao.toLowerCase().includes(query))
+      );
+      
+      const grid = document.getElementById('produtos-grid');
+      grid.innerHTML = filtrados.map(renderCard).join('');
+      document.getElementById('search-count').textContent = `Encontrados: ${filtrados.length} de ${produtosOriginais.length}`;
     }
 
     async function carregarProdutos() {
@@ -661,13 +694,12 @@
         const res = await fetch(`produtos.json?v=${ts}`);
         if (!res.ok) throw new Error();
 
-        const lista = await res.json();
-        if (!Array.isArray(lista) || lista.length === 0) throw new Error();
+        produtosOriginais = await res.json();
+        if (!Array.isArray(produtosOriginais) || produtosOriginais.length === 0) throw new Error();
 
-        const grid = document.getElementById('produtos-grid');
-        grid.innerHTML = lista.map(renderCard).join('');
+        filtrarProdutos(); // Usa a função de filtro para renderizar inicialmente
 
-        grid.style.display = 'grid';
+        document.getElementById('produtos-grid').style.display = 'grid';
         document.getElementById('produtos-loading').style.display = 'none';
         document.getElementById('produtos-footer').style.display = 'block';
 
