@@ -397,18 +397,43 @@ def _scrape_produto_amazon(page: Page, url: str) -> dict | None:
     }
 
 def _get_affiliate_amazon(page: Page, url: str) -> str:
+    """Tenta obter o link curto do SiteStrip da Amazon."""
     try:
-        for sel in ['#amzn-ss-get-link-button', 'button[title="Obter link"]']:
+        # Tenta clicar no botão 'Texto' do SiteStrip
+        seletores_botao = [
+            '#amzn-ss-get-link-button',
+            'button[title="Obter link"]',
+            '#SL_text_link',
+            'a[title="Texto"]'
+        ]
+        botao_clicado = False
+        for sel in seletores_botao:
             try:
-                page.locator(sel).first.click(timeout=4000)
+                btn = page.locator(sel).first
+                btn.wait_for(state='visible', timeout=4000)
+                btn.click()
+                botao_clicado = True
                 time.sleep(2)
                 break
             except Exception:
                 pass
-        for sel in ['#amzn-ss-text-shortlink-textarea', '#SL_text_short_link']:
+        
+        if not botao_clicado:
+            return url
+
+        # Tenta capturar o link no textarea/input
+        seletores_link = [
+            '#amzn-ss-text-shortlink-textarea',
+            '#SL_text_short_link',
+            'textarea[class*="shortlink"]',
+            'input[id="amzn-ss-text-shortlink-textarea"]'
+        ]
+        for sel in seletores_link:
             try:
-                val = page.locator(sel).first.input_value(timeout=3000)
-                if val and 'amzn.to' in val:
+                campo = page.locator(sel).first
+                campo.wait_for(state='visible', timeout=3000)
+                val = campo.get_attribute('value') or campo.input_value()
+                if val and ('amzn.to' in val or 'amazon.com.br' in val):
                     return val
             except Exception:
                 pass
@@ -563,6 +588,9 @@ def _scrape_produto_ml(page: Page, url: str) -> dict | None:
     except Exception:
         pass
 
+    # Link Afiliado ML
+    link = _get_affiliate_ml(page, url)
+
     descricao = f"{desconto}% de desconto"
     if preco_antigo:
         descricao += f" · era {format_price(preco_antigo)}"
@@ -572,10 +600,51 @@ def _scrape_produto_ml(page: Page, url: str) -> dict | None:
         'preco': format_price(preco_atual), 'preco_num': preco_atual,
         'preco_antigo': format_price(preco_antigo) if preco_antigo else '',
         'desconto': desconto, 'plataforma': 'Mercado Livre',
-        'link': url, 'foto_url': foto_url or '',
+        'link': link, 'foto_url': foto_url or '',
         'avaliacao': aval, 'num_aval': num_aval,
         'url_original': url, 'atualizado': datetime.now().strftime('%d/%m/%Y %H:%M'),
     }
+
+def _get_affiliate_ml(page: Page, url: str) -> str:
+    """Tenta obter o link do painel de afiliados do Mercado Livre."""
+    try:
+        # Tenta clicar no botão de gerar link do Hub de Afiliados
+        seletores_botao = [
+            'button[data-testid="get-link-button"]',
+            'button:has-text("Gerar link")',
+            'button:has-text("Obter link")',
+            '#affiliate-link-button',
+            '.ui-pdp-affiliate-link-button'
+        ]
+        for sel in seletores_botao:
+            try:
+                btn = page.locator(sel).first
+                btn.wait_for(state='visible', timeout=4000)
+                btn.click()
+                time.sleep(2.5)
+                break
+            except Exception:
+                pass
+
+        # Tenta capturar o link gerado
+        seletores_input = [
+            'input[data-testid="affiliate-link-input"]',
+            'input[class*="affiliate"]',
+            'textarea[class*="affiliate"]',
+            '.ui-pdp-affiliate-link-input'
+        ]
+        for sel in seletores_input:
+            try:
+                campo = page.locator(sel).first
+                campo.wait_for(state='visible', timeout=3000)
+                val = campo.get_attribute('value') or campo.input_value()
+                if val and 'mercadolivre' in val:
+                    return val
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return url
 
 def _scrape_produto_generico(page: Page, url: str) -> dict | None:
     """Fallback para qualquer site: tenta pegar o título da página e imagem og:image."""
@@ -742,11 +811,6 @@ def main():
         qtd = int(qtd_str) if qtd_str.isdigit() else len(nao_postados)
         selecionados = nao_postados[:qtd]
         
-        print(f"\n⚠️  Confirmar postagem de {len(selecionados)} itens? (S/n): ", end="")
-        if input().strip().lower() == 'n':
-            print("❌ Cancelado.")
-            return
-
         print(f"\n📨 Postando no Telegram ({INTERVALO_POSTS}s entre posts)...")
         for i, p in enumerate(selecionados):
             msg = formatar_mensagem(p)
@@ -805,8 +869,6 @@ def main():
 
         qtd_str = input(f"📦 Máximo por termo (Enter = {MAX_POR_BUSCA}): ").strip()
         qtd_max = int(qtd_str) if qtd_str.isdigit() else MAX_POR_BUSCA
-
-    postar = (opcao in ['1', '4'])
 
     postar = (opcao in ['1', '4'])
 
@@ -890,27 +952,22 @@ def main():
         print(f"  {prod['desconto']:3d}% | {prod['plataforma']:<15} | {prod['preco']:<12} | {prod['nome'][:38]}")
 
     if postar and todos:
-        print(f"\n⚠️  Tem certeza que deseja postar esses {len(todos)} itens no Telegram? (S/n): ", end="")
-        confirma = input().strip().lower()
-        if confirma == 'n':
-            print("❌ Postagem cancelada pelo usuário.")
-        else:
-            print(f"\n📨 Postando no Telegram ({INTERVALO_POSTS}s entre posts)...")
-            postados = 0
-            for i, prod in enumerate(todos):
-                msg = formatar_mensagem(prod)
-                ok  = telegram_send(msg, prod.get('foto_url'))
-                if ok:
-                    log_telegram_post(prod)
-                    registrar(prod['nome'], history, prod.get('plataforma', ''))
-                    print(f"  ✅ {prod['nome'][:50]}")
-                    postados += 1
-                else:
-                    print(f"  ❌ Falha: {prod['nome'][:50]}")
-                
-                if i < len(todos) - 1 and ok:
-                    time.sleep(INTERVALO_POSTS)
-            print(f"\n  📊 {postados} mensagens enviadas ao canal")
+        print(f"\n📨 Postando no Telegram ({INTERVALO_POSTS}s entre posts)...")
+        postados = 0
+        for i, prod in enumerate(todos):
+            msg = formatar_mensagem(prod)
+            ok  = telegram_send(msg, prod.get('foto_url'))
+            if ok:
+                log_telegram_post(prod)
+                registrar(prod['nome'], history, prod.get('plataforma', ''))
+                print(f"  ✅ {prod['nome'][:50]}")
+                postados += 1
+            else:
+                print(f"  ❌ Falha: {prod['nome'][:50]}")
+            
+            if i < len(todos) - 1 and ok:
+                time.sleep(INTERVALO_POSTS)
+        print(f"\n  📊 {postados} mensagens enviadas ao canal")
 
     save_history(history)
     salvar_no_site(todos)
