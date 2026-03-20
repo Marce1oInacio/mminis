@@ -11,12 +11,12 @@ from playwright.sync_api import sync_playwright
 # ⚙️ CONFIGURAÇÕES
 # ==============================================================================
 
-TELEGRAM_TOKEN        = "8748572165:AAF2mKNmurwRf4cV4vC4uJnUiG1nyR3zyjY"
-TELEGRAM_USER_ID      = "792758999"
-WISHLIST_URL          = "https://www.amazon.com.br/hz/wishlist/ls/3VCIMEBP19W5X"
-ARQUIVO_HISTORICO     = 'wishlist_history.json'
-ARQUIVO_SESSAO_AM     = 'session.json'
-INTERVALO_MINUTOS     = 45
+TELEGRAM_TOKEN    = "8748572165:AAF2mKNmurwRf4cV4vC4uJnUiG1nyR3zyjY"
+TELEGRAM_USER_ID  = "792758999"
+WISHLIST_URL      = "https://www.amazon.com.br/hz/wishlist/ls/3VCIMEBP19W5X"
+ARQUIVO_HISTORICO = 'wishlist_history.json'
+ARQUIVO_SESSAO_AM = 'session.json'
+INTERVALO_MINUTOS = 45
 
 # ==============================================================================
 
@@ -48,10 +48,15 @@ def parse_price(texto: str) -> float | None:
     if not texto:
         return None
     try:
+        # Remove tudo exceto dígitos, vírgula e ponto
         limpo = "".join(c for c in texto if c.isdigit() or c in ",.")
+        if not limpo:
+            return None
         if ',' in limpo and '.' in limpo:
+            # Formato: 1.234,56
             limpo = limpo.replace('.', '').replace(',', '.')
         elif ',' in limpo:
+            # Formato: 154,90
             limpo = limpo.replace(',', '.')
         val = float(limpo)
         return val if val > 0 else None
@@ -78,110 +83,160 @@ def save_history(history: dict):
         json.dump(history, f, indent=2, ensure_ascii=False)
 
 
-def coletar_asins(page) -> list[str]:
-    """Acessa a wishlist e retorna lista de ASINs."""
-    print("  🌐 Acessando wishlist...")
-    page.goto(WISHLIST_URL, wait_until='domcontentloaded', timeout=60000)
+def garantir_list_view(page):
+    """
+    Garante que a wishlist está em MODO LISTA para expor campos de preço.
+    Navega para a URL com viewType=list e clica no botão se ainda não estiver
+    em lista (o botão aparece quando está em grade).
+    """
+    url_lista = WISHLIST_URL + "?viewType=list"
+    print(f"  🌐 Acessando wishlist (modo lista)...")
+    page.goto(url_lista, wait_until='domcontentloaded', timeout=60000)
+    time.sleep(2)
 
+    # Se ainda há o link para mudar para lista, clicamos nele
+    btn_lista = page.get_by_role("link", name="Mudar para visualização de lista")
+    if btn_lista.count() > 0:
+        print("  🔄 Alternando para visualização de lista...")
+        btn_lista.first.click()
+        time.sleep(2)
+
+    # Scroll para carregar todos os itens lazy-loaded
+    for _ in range(6):
+        page.mouse.wheel(0, 2500)
+        time.sleep(0.6)
+    time.sleep(1.5)
+
+
+def verificar_indisponivel(page, url_produto: str) -> bool:
+    """
+    Abre a página do produto e verifica se está marcado como indisponível.
+    Retorna True se estiver indisponível.
+    """
     try:
-        page.wait_for_selector('li[data-asin], li[id^="item_"], li.g-item-sortable', timeout=15000)
-    except Exception:
-        print("  ⚠️ Timeout aguardando itens — continuando mesmo assim...")
-
-    # Scroll para forçar carregamento de todos os itens
-    for _ in range(5):
-        page.mouse.wheel(0, 2000)
-        time.sleep(0.8)
-    time.sleep(1)
-
-    asins: list[str] = []
-    html = page.content()
-
-    # Método 1: data-asin direto no <li>
-    for item in page.locator('li[data-asin]').all():
-        asin = (item.get_attribute('data-asin') or '').strip()
-        if asin and asin not in asins:
-            asins.append(asin)
-
-    # Método 2: data-reposition-action-params contém "ASIN:B0XXXX|..."
-    if not asins:
-        for item in page.locator('[data-reposition-action-params]').all():
-            param = item.get_attribute('data-reposition-action-params') or ''
-            m = re.search(r'ASIN:([A-Z0-9]{10})', param)
-            if m and m.group(1) not in asins:
-                asins.append(m.group(1))
-
-    # Método 3: id="item_ITEMID" + extrair ASIN do HTML interno
-    if not asins:
-        for item in page.locator('li[id^="item_"]').all():
-            outer = item.inner_html()[:600]
-            m = re.search(r'ASIN:([A-Z0-9]{10})', outer) or re.search(r'/dp/([A-Z0-9]{10})/', outer)
-            if m and m.group(1) not in asins:
-                asins.append(m.group(1))
-
-    # Método 4: regex no HTML completo (último recurso)
-    if not asins:
-        for pattern in [
-            r'data-asin="([A-Z0-9]{10})"',
-            r'ASIN:([A-Z0-9]{10})\|',
-            r'"asin"\s*:\s*"([A-Z0-9]{10})"',
-            r'/dp/([A-Z0-9]{10})/',
-        ]:
-            matches = re.findall(pattern, html)
-            for a in matches:
-                if a not in asins:
-                    asins.append(a)
-            if asins:
-                break
-
-    print(f"  📦 {len(asins)} ASINs: {asins}")
-    return asins
-
-
-def scrape_produto(page, asin: str) -> dict | None:
-    """Abre a página do produto e retorna título e preço."""
-    url = f"https://www.amazon.com.br/dp/{asin}/"
-    try:
-        page.goto(url, wait_until='domcontentloaded', timeout=45000)
-        page.wait_for_selector('#productTitle', timeout=12000)
+        page.goto(url_produto, wait_until='domcontentloaded', timeout=45000)
         time.sleep(1.5)
+
+        # Seletores comuns de indisponibilidade na Amazon BR
+        sels_indisponivel = [
+            '#availability',
+            '#outOfStock',
+            '.a-color-price',
+        ]
+        for sel in sels_indisponivel:
+            try:
+                txt = page.locator(sel).first.inner_text(timeout=4000).strip().lower()
+                if any(kw in txt for kw in ['não disponível', 'indisponível', 'unavailable',
+                                             'out of stock', 'esgotado', 'fora de estoque']):
+                    return True
+            except Exception:
+                continue
     except Exception as e:
-        print(f"     ✗ Falha ao carregar {asin}: {e}")
-        return None
+        print(f"     ⚠️ Erro ao verificar página do produto: {e}")
+    return False
 
-    # Título
-    titulo = ""
-    try:
-        titulo = page.locator('#productTitle').inner_text().strip()
-    except Exception:
-        pass
 
-    if not titulo:
-        print(f"     ✗ Título não encontrado para {asin}")
-        return None
+def coletar_itens_da_lista(page) -> list[dict]:
+    """
+    Lê todos os itens da wishlist em modo lista.
+    Retorna lista de dicts com: item_id, titulo, preco (float|None), url_produto.
+    """
+    garantir_list_view(page)
 
-    # Preço
-    preco_str = ""
-    for sel in [
-        '.a-price.priceToPay .a-offscreen',
-        '.apexPriceToPay .a-offscreen',
-        '#priceblock_ourprice',
-        '#priceblock_dealprice',
-        '.a-price .a-offscreen',
-    ]:
+    itens = []
+    linhas = page.locator('li.g-item-sortable').all()
+    print(f"  📋 {len(linhas)} itens encontrados na lista.")
+
+    for li in linhas:
+        # ── item_id (chave de histórico) ──────────────────────────────────
+        item_id = (
+            li.get_attribute('data-itemid') or
+            li.get_attribute('id') or
+            ''
+        ).strip()
+
+        # ── ASIN / URL do produto ─────────────────────────────────────────
+        asin        = ''
+        url_produto = ''
         try:
-            txt = page.locator(sel).first.inner_text().strip()
-            if txt and parse_price(txt):
-                preco_str = txt
-                break
+            outer = li.inner_html()
+            m = re.search(r'data-asin="([A-Z0-9]{10})"', outer) or \
+                re.search(r'ASIN:([A-Z0-9]{10})', outer) or \
+                re.search(r'/dp/([A-Z0-9]{10})/', outer)
+            if m:
+                asin        = m.group(1)
+                url_produto = f"https://www.amazon.com.br/dp/{asin}/"
         except Exception:
-            continue
+            pass
 
-    preco = parse_price(preco_str)
-    print(f"     ✓ {titulo[:60]}")
-    print(f"       Preço: {preco_str or '(não encontrado)'}")
+        if not item_id:
+            item_id = asin or url_produto   # fallback
 
-    return {'titulo': titulo, 'preco': preco, 'url': url}
+        if not item_id:
+            continue   # item sem identificação — pula
+
+        # ── Título ────────────────────────────────────────────────────────
+        titulo = ''
+        for sel_titulo in [
+            'a[id^="itemName_"]',
+            'a[id^="item-byline-"]',
+            '.a-list-item a',
+            'span[id^="item-byline-"]',
+        ]:
+            try:
+                t = li.locator(sel_titulo).first.inner_text(timeout=3000).strip()
+                if t:
+                    titulo = t
+                    break
+            except Exception:
+                continue
+
+        # ── Preço — estratégias específicas para o modo lista ─────────────
+        preco      = None
+        preco_str  = ''
+        sels_preco = [
+            '.a-section.price-section .a-offscreen',   # Conforme mapeamento do usuário
+            '.a-section.price-section',               # Alternativa no mapeamento
+            '.a-price .a-offscreen',
+            '.a-price-whole',
+            '[data-a-color="price"] .a-offscreen',
+        ]
+        for sel in sels_preco:
+            try:
+                loc = li.locator(sel).first
+                txt = loc.inner_text(timeout=2000).strip()
+                if not txt:
+                    # Tenta pegar via atributo se inner_text falhar em elementos ocultos
+                    txt = loc.get_attribute('innerText') or ''
+                
+                p = parse_price(txt)
+                if p:
+                    preco_str = txt
+                    preco     = p
+                    break
+            except Exception:
+                continue
+
+        # Se o preço veio só da parte inteira, tenta pegar os centavos também
+        if preco and ',' not in preco_str and '.' not in preco_str:
+            try:
+                cents = li.locator('.a-price-fraction').first.inner_text(timeout=2000).strip()
+                if cents.isdigit():
+                    preco_str = f"{int(preco)},{cents}"
+                    preco     = parse_price(preco_str)
+            except Exception:
+                pass
+
+        itens.append({
+            'item_id'    : item_id,
+            'asin'       : asin,
+            'titulo'     : titulo or f"(sem título) [{item_id}]",
+            'preco'      : preco,
+            'preco_str'  : preco_str,
+            'url_produto': url_produto,
+        })
+
+    return itens
 
 
 def monitorar():
@@ -195,8 +250,8 @@ def monitorar():
         browser = p.firefox.launch(headless=False)
         ctx_args: dict = {
             'user_agent': (
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) '
-                'Gecko/20100101 Firefox/122.0'
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) '
+                'Gecko/20100101 Firefox/123.0'
             ),
             'viewport': {'width': 1440, 'height': 900},
         }
@@ -205,64 +260,109 @@ def monitorar():
             print("  🔐 Sessão Amazon carregada")
 
         context = browser.new_context(**ctx_args)
-        page = context.new_page()
+        page    = context.new_page()
 
         try:
-            asins = coletar_asins(page)
+            itens = coletar_itens_da_lista(page)
 
-            if not asins:
-                print("  ⚠️ Nenhum ASIN encontrado. Verifique a sessão ou URL.")
+            if not itens:
+                print("  ⚠️ Nenhum item encontrado. Verifique a sessão ou URL.")
                 return
 
-            print(f"\n  🔎 Verificando {len(asins)} produtos individualmente...")
+            print(f"\n  🔎 Analisando {len(itens)} itens...")
 
-            for i, asin in enumerate(asins, 1):
-                print(f"\n  [{i}/{len(asins)}] {asin}")
-                dados = scrape_produto(page, asin)
+            for i, item in enumerate(itens, 1):
+                item_id     = item['item_id']
+                titulo      = item['titulo']
+                preco_now   = item['preco']
+                url_produto = item['url_produto']
 
-                if not dados or not dados['preco']:
-                    print("     ⚠️ Sem preço — ignorando.")
+                print(f"\n  [{i}/{len(itens)}] {titulo[:70]}")
+                print(f"       Preço atual: {item['preco_str'] or '(não encontrado)'}")
+
+                # ── Sem preço → verificar disponibilidade ─────────────────
+                if preco_now is None:
+                    disponivel = False
+                    if url_produto:
+                        print(f"     🔍 Abrindo página para verificar disponibilidade...")
+                        indisponivel = verificar_indisponivel(page, url_produto)
+                        if indisponivel:
+                            print(f"     ❌ Item indisponível na Amazon.")
+                            # Registra / mantém no histórico como indisponível
+                            if item_id in history:
+                                history[item_id]['indisponivel'] = True
+                            else:
+                                history[item_id] = {
+                                    'titulo'        : titulo,
+                                    'preco'         : None,
+                                    'indisponivel'  : True,
+                                    'data_registro' : datetime.now().isoformat(),
+                                }
+                        else:
+                            print(f"     ⚠️ Preço não localizado (mas pode estar disponível).")
+                    else:
+                        print(f"     ⚠️ Sem URL do produto — não é possível verificar.")
                     continue
 
-                item_id   = f"https://www.amazon.com.br/dp/{asin}/"
-                titulo    = dados['titulo']
-                preco_now = dados['preco']
-
+                # ── Com preço → análise fria vs histórico ─────────────────
                 if item_id in history:
-                    old_price = history[item_id]['preco']
-                    history[item_id].update({'preco': preco_now, 'titulo': titulo})
+                    registro   = history[item_id]
+                    old_price  = registro.get('preco')
 
-                    if preco_now < old_price:
+                    # Atualiza histórico com preço atual
+                    history[item_id].update({
+                        'titulo'        : titulo,
+                        'preco'         : preco_now,
+                        'indisponivel'  : False,
+                        'ultima_coleta' : datetime.now().isoformat(),
+                    })
+
+                    if old_price is not None and preco_now < old_price:
                         reducao = old_price - preco_now
                         pct     = (reducao / old_price) * 100
 
                         msg = (
-                            "📉 <b>QUEDA DE PREÇO NA WISHLIST!</b>\n\n"
+                            "💎 <b>OFERTA ENCONTRADA!</b>\n"
+                            "───────────────────\n"
                             f"📦 <b>{titulo}</b>\n\n"
+                            f"📉 <b>Queda detectada:</b>\n"
                             f"❌ De: <s>{format_price(old_price)}</s>\n"
-                            f"✅ Por: <b>{format_price(preco_now)}</b>\n"
-                            f"🔥 Economia de {format_price(reducao)} ({pct:.1f}% OFF)\n\n"
-                            f"🔗 <a href='{item_id}'>Ver na Amazon</a>"
+                            f"✅ Por: <b>{format_price(preco_now)}</b>\n\n"
+                            f"🔥 <b>Economia de {format_price(reducao)} ({pct:.1f}% OFF)</b>\n"
+                            "───────────────────\n"
+                            f"🔗 <a href='{url_produto}'>COMPRAR NA AMAZON</a>"
                         )
 
                         print(f"     🔥 BAIXOU! {format_price(old_price)} → {format_price(preco_now)}")
                         send_personal_msg(msg)
-                else:
-                    history[item_id] = {
-                        'titulo'         : titulo,
-                        'preco'          : preco_now,
-                        'data_registro'  : datetime.now().isoformat(),
-                    }
-                    print(f"     ✅ Novo item registrado em {format_price(preco_now)}")
 
-                time.sleep(1.5)
+                    elif old_price is not None and preco_now > old_price:
+                        print(f"     📈 Subiu: {format_price(old_price)} → {format_price(preco_now)}")
+
+                    else:
+                        print(f"     ✅ Preço estável: {format_price(preco_now)}")
+
+                else:
+                    # Primeiro registro deste item
+                    history[item_id] = {
+                        'titulo'        : titulo,
+                        'preco'         : preco_now,
+                        'indisponivel'  : False,
+                        'data_registro' : datetime.now().isoformat(),
+                        'ultima_coleta' : datetime.now().isoformat(),
+                    }
+                    print(f"     ✅ Novo item registrado: {format_price(preco_now)}")
+
+                time.sleep(0.8)
 
             save_history(history)
             print(f"\n  ✅ Feito! Próxima verificação em {INTERVALO_MINUTOS} min.")
 
         except Exception as e:
             print(f"  ❌ Erro crítico: {e}")
+            import traceback; traceback.print_exc()
         finally:
+            context.close()
             browser.close()
 
 
