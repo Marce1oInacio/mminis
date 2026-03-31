@@ -23,6 +23,9 @@ from datetime import datetime
 from urllib.parse import urljoin, quote_plus
 from playwright.sync_api import sync_playwright, Page
 from bs4 import BeautifulSoup
+import requests
+import tkinter as tk
+from tkinter import simpledialog
 
 # =============================================
 # CONFIGURAÇÕES
@@ -35,6 +38,10 @@ MAX_PAGINAS       = 3
 MAX_PRODUTOS      = 20
 MIN_VENDAS        = 0                   # mínimo de vendas
 BASE_URL          = 'https://www.mercadolivre.com.br'
+
+# — Config Telegram —
+TELEGRAM_TOKEN    = "8748572165:AAF2mKNmurwRf4cV4vC4uJnUiG1nyR3zyjY"
+TELEGRAM_USER_ID  = "792758999"
 PLATAFORMA        = 'Mercado Livre'
 
 
@@ -113,6 +120,19 @@ def format_price(valor: float | None) -> str:
     if valor is None:
         return ''
     return f"R$ {valor:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+
+def send_telegram_msg(texto: str, foto_url: str | None = None):
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendPhoto" if foto_url else f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {"chat_id": TELEGRAM_USER_ID, "parse_mode": "HTML"}
+    if foto_url:
+        payload["photo"] = foto_url
+        payload["caption"] = texto
+    else:
+        payload["text"] = texto
+    try:
+        requests.post(url, json=payload, timeout=10)
+    except Exception:
+        pass
 
 
 # =============================================
@@ -442,40 +462,54 @@ def get_affiliate_link_ml(page: Page, url_original: str) -> str:
     Tenta capturar via painel de afiliados ou retorna URL limpa.
     """
     try:
-        # Tenta abrir o gerador de link do ML Afiliados
-        seletores_botao = [
-            'button[data-testid="get-link-button"]',
-            'button:has-text("Gerar link")',
-            'button:has-text("Obter link")',
-            '#affiliate-link-button',
-        ]
-        for sel in seletores_botao:
-            try:
-                btn = page.locator(sel).first
-                btn.wait_for(state='visible', timeout=3000)
-                btn.click()
-                time.sleep(2)
-                break
-            except Exception:
-                pass
+        # Seletor do codegen do usuário: get_by_test_id("generate_link_button")
+        botao_ok = False
+        try:
+            btn = page.get_by_test_id("generate_link_button").first
+            btn.wait_for(state='visible', timeout=5000)
+            btn.click()
+            botao_ok = True
+        except Exception:
+            # Fallback seletores antigos
+            seletores_botao = ['button:has-text("Gerar link")', 'button:has-text("Obter link")']
+            for sel in seletores_botao:
+                try:
+                    btn = page.locator(sel).first
+                    btn.wait_for(state='visible', timeout=3000)
+                    btn.click()
+                    botao_ok = True
+                    break
+                except Exception:
+                    pass
 
-        # Tenta capturar o link gerado
-        seletores_input = [
-            'input[data-testid="affiliate-link-input"]',
-            'input[class*="affiliate"]',
-            'textarea[class*="affiliate"]',
+        if not botao_ok:
+            # Se não achou botão, tenta ver se o link já está na página (alguns casos)
+            pass
+        else:
+            time.sleep(2)
+
+        # Seletor do codegen do usuário para capturar o link
+        # O usuário passou: get_by_test_id("text-field__label_link")
+        # Vamos tentar pegar o valor do input associado ou o texto do elemento
+        seletores_link = [
+            '[data-testid="text-field__label_link"]', 
+            '[data-testid="affiliate-link-input"]',
+            'input[class*="affiliate"]'
         ]
-        for sel in seletores_input:
+        
+        for sel in seletores_link:
             try:
-                campo = page.locator(sel).first
-                campo.wait_for(state='visible', timeout=2000)
-                val = campo.get_attribute('value') or campo.input_value()
-                if val and 'mercadolivre' in val:
+                el = page.locator(sel).first
+                el.wait_for(state='visible', timeout=3000)
+                # Tenta pegar value (se for input) ou inner_text (se for label/div)
+                val = el.get_attribute('value') or el.input_value() or el.inner_text()
+                if val and 'mercadolivre.com' in val:
+                    print(f"       ✅ Link afiliado capturado: {val[:40]}...")
                     return val
             except Exception:
                 pass
 
-        # fallback: retorna URL limpa (sem parâmetros de rastreamento do ML)
+        print("       ⚠️  Não foi possível capturar o link afiliado. Usando original.")
         return url_original
 
     except Exception:
@@ -507,7 +541,12 @@ def verificar_ou_fazer_login(browser):
     page    = context.new_page()
     page.goto('https://www.mercadolivre.com.br/', wait_until='domcontentloaded')
 
-    input("  👉 Pressione ENTER após estar logado no ML...")
+    print(f"  👉 Use a janela de pop-up para continuar...")
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    simpledialog.askstring("Login Mercado Livre", "Faça login no navegador que abriu.\nDepois de logado, clique OK aqui ou pressione Enter.", initialvalue="OK")
+    root.destroy()
 
     # Salva sessão
     state = context.storage_state()
@@ -527,19 +566,28 @@ def main():
     print("  mminis — Buscador Mercado Livre")
     print("=" * 55)
 
-    termo = input("\n🔍 Digite o termo de busca (ex: Hot Wheels): ").strip()
+    def gui_input(prompt, title="Mercado Livre Search", initial=""):
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        res = simpledialog.askstring(title, prompt, initialvalue=initial)
+        root.destroy()
+        return res
+
+    termo = gui_input("🔍 Digite o termo de busca (ex: Hot Wheels):", "mminis — ML")
     if not termo:
-        print("Nenhum termo digitado. Encerrando.")
+        print("Cancelado ou nenhum termo digitado. Encerrando.")
         return
+    termo = termo.strip()
 
-    limite_str = input(f"💰 Preço máximo em R$ (Enter para usar {PRECO_MAXIMO:.0f}): ").strip()
-    limite = float(limite_str.replace(',', '.')) if limite_str else PRECO_MAXIMO
+    limite_str = gui_input(f"💰 Preço máximo em R$ (Vazio para {PRECO_MAXIMO:.0f}):", "Filtro de Preço", initial=str(int(PRECO_MAXIMO)))
+    limite = float(limite_str.replace(',', '.')) if limite_str and limite_str.strip() else PRECO_MAXIMO
 
-    qtd_str = input(f"📦 Quantos produtos quer baixar? (Enter para usar {MAX_PRODUTOS}): ").strip()
-    qtd = int(qtd_str) if qtd_str.isdigit() and int(qtd_str) > 0 else MAX_PRODUTOS
+    qtd_str = gui_input(f"📦 Quantos produtos baixar? (Vazio para {MAX_PRODUTOS}):", "Quantidade", initial=str(MAX_PRODUTOS))
+    qtd = int(qtd_str) if qtd_str and qtd_str.isdigit() else MAX_PRODUTOS
 
-    min_vendas_str = input(f"⭐ Mínimo de vendas (Enter para {MIN_VENDAS}): ").strip()
-    min_vendas = int(min_vendas_str) if min_vendas_str.isdigit() else MIN_VENDAS
+    min_vendas_str = gui_input(f"⭐ Mínimo de vendas (Vazio para {MIN_VENDAS}):", "Filtro Social", initial=str(MIN_VENDAS))
+    min_vendas = int(min_vendas_str) if min_vendas_str and min_vendas_str.isdigit() else MIN_VENDAS
 
     print(f"\n🚀 Buscando '{termo}' no ML · R$ {limite:.2f} · {qtd} produtos · min {min_vendas} vendas\n")
 
@@ -617,7 +665,15 @@ def main():
         print(f"  {idx:2d}. {p['nome'][:60]:60} | {p['preco']:10} {vendas_txt}")
     
     print("-" * 55)
-    excluir_str = input("\n🚫 Digite os números para EXCLUIR (ex: 1-5,7,12) ou Enter para manter todos: ").strip()
+    def gui_input(prompt, title="Excluir Produtos"):
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        res = simpledialog.askstring(title, prompt)
+        root.destroy()
+        return res
+
+    excluir_str = gui_input("🚫 Digite os números para EXCLUIR (ex: 1-5,7,12)\nou deixe em branco para manter todos:", "Refinar Lista")
     
     if excluir_str:
         try:
@@ -658,6 +714,22 @@ def main():
     print(f"  📄 Total no arquivo: {n_total} produtos")
     print(f"  💾 Arquivo salvo: {ARQUIVO_SAIDA}")
     print("=" * 55)
+
+    # 6. Enviar para Telegram
+    if produtos_novos:
+        print(f"📤 Enviando {len(produtos_novos)} itens para seu Telegram...")
+        for p in produtos_novos:
+            msg = (
+                f"🔵 <b>ACHADO MERCADO LIVRE!</b>\n\n"
+                f"📦 <b>{p['nome'][:100]}</b>\n"
+                f"✅ Por: <b>{p['preco']}</b>\n"
+                f"📉 Desconto: <b>{p['desconto']}% OFF</b>\n"
+                f"🏷️ Vendas: {p['vendas']}\n\n"
+                f"🔗 <a href='{p['link']}'>COMPRAR AGORA</a>"
+            )
+            send_telegram_msg(msg, p.get('foto_url'))
+            time.sleep(1)
+
     print("\n📤 Próximo passo: faça upload do 'produtos.json' no GitHub.")
     print("   O site vai atualizar automaticamente em ~1 minuto.\n")
 

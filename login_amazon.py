@@ -19,6 +19,8 @@ import json
 import os
 import time
 from playwright.sync_api import sync_playwright
+import tkinter as tk
+from tkinter import simpledialog
 
 ARQUIVO_SESSAO = 'session.json'
 
@@ -45,7 +47,11 @@ O que vai acontecer:
 
 ⚠️  Não feche o navegador manualmente.
 """)
-    input("Pressione ENTER para abrir o navegador...")
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    simpledialog.askstring("Abrir Navegador", "O Firefox vai abrir para você logar.\nClique OK para continuar.", initialvalue="OK")
+    root.destroy()
 
     with sync_playwright() as p:
         browser = p.firefox.launch(
@@ -67,7 +73,11 @@ O que vai acontecer:
         print("\n👉 Faça o login no navegador que abriu.")
         print("   Depois que estiver na página principal da Amazon,")
         print("   volte aqui e pressione ENTER.\n")
-        input("Pressione ENTER após estar logado na Amazon...")
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        simpledialog.askstring("Confirmar Login", "Após estar logado na Amazon (página principal),\nvolte aqui e clique OK.", initialvalue="OK")
+        root.destroy()
 
         # Verifica se está logado de fato
         try:

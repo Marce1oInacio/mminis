@@ -32,6 +32,8 @@ from datetime import datetime
 import csv
 import requests
 from playwright.sync_api import sync_playwright, Page
+import tkinter as tk
+from tkinter import simpledialog
 
 # =============================================
 # CONFIGURAÇÕES
@@ -48,6 +50,10 @@ ARQUIVO_SESSAO_ML = 'session_ml.json'
 # 3. Escolha "Valores separados por vírgula (.csv)" e clique em Publicar.
 # 4. Cole o link gerado abaixo:
 GOOGLE_SHEET_URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbBLKgjFglQH0JFpOx7XxKnWD1fDDVnia-ufRbOgdqm34ITVD5twQAd1Aw9drYTecWwV2XMzXTMdmn/pub?gid=0&single=true&output=csv' 
+
+# — Config Telegram —
+TELEGRAM_TOKEN    = "8748572165:AAF2mKNmurwRf4cV4vC4uJnUiG1nyR3zyjY"
+TELEGRAM_USER_ID  = "792758999"
 
 
 # =============================================
@@ -74,6 +80,19 @@ def format_price(valor: float | None) -> str:
     if valor is None:
         return ''
     return f"R$ {valor:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+
+def send_telegram_msg(texto: str, foto_url: str | None = None):
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendPhoto" if foto_url else f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {"chat_id": TELEGRAM_USER_ID, "parse_mode": "HTML"}
+    if foto_url:
+        payload["photo"] = foto_url
+        payload["caption"] = texto
+    else:
+        payload["text"] = texto
+    try:
+        requests.post(url, json=payload, timeout=10)
+    except Exception:
+        pass
 
 def load_history() -> dict:
     if os.path.exists(ARQUIVO_HISTORICO):
@@ -287,29 +306,40 @@ def scrape_amazon(page: Page, url: str) -> dict | None:
         'atualizado': datetime.now().strftime('%d/%m/%Y %H:%M'),
     }
 
-def get_affiliate_amazon(page: Page, url_original: str) -> str:
+def get_affiliate_link(page: Page, url_original: str, plataforma: str) -> str:
     try:
-        for sel in ['#amzn-ss-get-link-button', 'button[title="Obter link"]', '#SL_text_link']:
+        if plataforma == 'Amazon':
+            # Codegen: button "Obter link"
             try:
-                btn = page.locator(sel).first
-                btn.wait_for(state='visible', timeout=4000)
+                btn = page.get_by_role("button", name="Obter link").first
+                btn.wait_for(state='visible', timeout=5000)
                 btn.click()
                 time.sleep(2)
-                break
-            except Exception:
-                pass
-        for sel in ['#amzn-ss-text-shortlink-textarea', '#SL_text_short_link', 'textarea[class*="shortlink"]']:
-            try:
-                campo = page.locator(sel).first
-                campo.wait_for(state='visible', timeout=3000)
+                campo = page.get_by_role("textbox", name="Generated short link").first
+                campo.wait_for(state='visible', timeout=4000)
                 val = campo.get_attribute('value') or campo.input_value()
                 if val and ('amzn.to' in val or 'amazon.com.br' in val):
                     return val
             except Exception:
                 pass
+        elif plataforma == 'Mercado Livre':
+            # Mercado Livre Codegen: test-id "generate_link_button"
+            try:
+                btn = page.get_by_test_id("generate_link_button").first
+                btn.wait_for(state='visible', timeout=5000)
+                btn.click()
+                time.sleep(2)
+                # Tenta pegar do label/input indicado pelo codegen
+                val = page.get_by_test_id("text-field__label_link").inner_text() or \
+                      page.get_by_test_id("text-field__label_link").get_attribute('value')
+                if val and 'mercadolivre' in val:
+                    return val
+            except Exception:
+                pass
+
+        return url_original
     except Exception:
-        pass
-    return url_original
+        return url_original
 
 
 # =============================================
@@ -493,8 +523,13 @@ def main():
         plat = detectar_plataforma(url)
         print(f"  {i:02d}. [{plat}] {url[:65]}...")
 
-    confirmar = input(f"\n▶ Processar todos os {len(urls)} links? (Enter = sim / n = não): ").strip().lower()
-    if confirmar == 'n':
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    confirmar = simpledialog.askstring("Confirmar Processamento", f"Processar todos os {len(urls)} links?\nDigite 's' para sim ou clique Cancelar para não:", initialvalue="s")
+    root.destroy()
+    
+    if not confirmar or confirmar.lower() != 's':
         print("Cancelado.")
         return
 
@@ -538,7 +573,11 @@ def main():
                 ctx_ml_tmp = browser.new_context(**ctx_args)
                 pg_tmp = ctx_ml_tmp.new_page()
                 pg_tmp.goto('https://www.mercadolivre.com.br/', wait_until='domcontentloaded')
-                input("  👉 Faça login no ML e pressione ENTER...")
+                root = tk.Tk()
+                root.withdraw()
+                root.attributes("-topmost", True)
+                simpledialog.askstring("Login Mercado Livre", "Faça login no ML no navegador que abriu.\nDepois de logado, clique OK aqui.", initialvalue="OK")
+                root.destroy()
                 state = ctx_ml_tmp.storage_state()
                 with open(ARQUIVO_SESSAO_ML, 'w', encoding='utf-8') as f:
                     json.dump(state, f, indent=2)
@@ -604,12 +643,34 @@ def main():
         for e in erros:
             print(f"    - {e}")
 
+    print(f"  💾 Arquivo salvo: {ARQUIVO_SAIDA}")
+    print("=" * 55)
+
+    # Enviar para Telegram
+    if produtos_novos:
+        print(f"📤 Enviando {len(produtos_novos)} itens para seu Telegram...")
+        for p in produtos_novos:
+            msg = (
+                f"🔵 <b>ACHADO {p['plataforma'].upper()}!</b>\n\n"
+                f"📦 <b>{p['nome'][:120]}</b>\n"
+                f"✅ Por: <b>{p['preco']}</b>\n"
+                f"📉 Desconto: {p.get('desconto', 0)}% OFF\n\n"
+                f"🔗 <a href='{p['link']}'>COMPRAR AGORA</a>"
+            )
+            send_telegram_msg(msg, p.get('foto_url'))
+            time.sleep(1)
+
     print("\n📤 Próximo passo: faça upload do 'produtos.json' no GitHub.")
     print("   O site vai atualizar automaticamente em ~1 minuto.\n")
 
     # opcional: pergunta se quer limpar os links processados
-    limpar = input("🗑️  Limpar links.txt após processar? (s = sim / Enter = não): ").strip().lower()
-    if limpar == 's':
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    limpar = simpledialog.askstring("Limpar Links", "Deseja limpar o arquivo links.txt?\nDigite 's' para sim ou clique Cancelar para não:", initialvalue="n")
+    root.destroy()
+    
+    if limpar and limpar.lower() == 's':
         with open(ARQUIVO_LINKS, 'w', encoding='utf-8') as f:
             f.write("# links.txt — mminis\n# Cole seus links aqui, um por linha.\n\n")
         print(f"  ✅ '{ARQUIVO_LINKS}' limpo.")

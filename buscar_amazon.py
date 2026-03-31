@@ -23,6 +23,9 @@ from datetime import datetime
 from urllib.parse import urljoin, quote_plus
 from playwright.sync_api import sync_playwright, Page
 from bs4 import BeautifulSoup
+import requests
+import tkinter as tk
+from tkinter import simpledialog
 
 # =============================================
 # CONFIGURAÇÕES — edite aqui se precisar
@@ -35,6 +38,10 @@ MAX_PAGINAS      = 3                    # quantas páginas de busca percorrer
 MAX_PRODUTOS     = 20                   # máximo de produtos no JSON final
 MIN_VENDAS       = 0                    # mínimo de vendas/avaliações
 BASE_URL         = 'https://www.amazon.com.br'
+
+# — Config Telegram —
+TELEGRAM_TOKEN    = "8748572165:AAF2mKNmurwRf4cV4vC4uJnUiG1nyR3zyjY"
+TELEGRAM_USER_ID  = "792758999"
 
 
 # =============================================
@@ -112,6 +119,19 @@ def format_price(valor: float | None) -> str:
         return ''
     return f"R$ {valor:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
 
+def send_telegram_msg(texto: str, foto_url: str = None):
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendPhoto" if foto_url else f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {"chat_id": TELEGRAM_USER_ID, "parse_mode": "HTML"}
+    if foto_url:
+        payload["photo"] = foto_url
+        payload["caption"] = texto
+    else:
+        payload["text"] = texto
+    try:
+        requests.post(url, json=payload, timeout=10)
+    except Exception:
+        pass
+
 
 # =============================================
 # SCRAPING — PÁGINA DE BUSCA
@@ -177,7 +197,7 @@ def coletar_urls_busca(page: Page, termo: str, max_produtos: int = MAX_PRODUTOS)
 def scrape_produto(page: Page, url: str) -> dict | None:
     """Abre a página do produto e extrai todos os dados."""
 
-    def texto(seletores: list, timeout: int = 5000) -> str | None:
+    def texto(seletores: list, timeout: int = 2000) -> str | None:
         for sel in seletores:
             try:
                 loc = page.locator(sel).first
@@ -189,7 +209,7 @@ def scrape_produto(page: Page, url: str) -> dict | None:
                 pass
         return None
 
-    def atributo(seletores: list, attr: str, timeout: int = 5000) -> str | None:
+    def atributo(seletores: list, attr: str, timeout: int = 2000) -> str | None:
         for sel in seletores:
             try:
                 loc = page.locator(sel).first
@@ -310,42 +330,57 @@ def scrape_produto(page: Page, url: str) -> dict | None:
 
 def get_affiliate_link(page: Page, url_original: str) -> str:
     try:
-        seletores_botao = [
-            '#amzn-ss-get-link-button',
-            'button[title="Obter link"]',
-            '#SL_text_link',
-        ]
+        # Seletor do codegen do usuário: get_by_role("button", name="Obter link")
         botao_ok = False
-        for sel in seletores_botao:
-            try:
-                btn = page.locator(sel).first
-                btn.wait_for(state='visible', timeout=4000)
-                btn.click()
-                botao_ok = True
-                break
-            except Exception:
-                pass
+        try:
+            btn = page.get_by_role("button", name="Obter link").first
+            btn.wait_for(state='visible', timeout=5000)
+            btn.click()
+            botao_ok = True
+        except Exception:
+            # Fallback seletores antigos
+            seletores_botao = ['#amzn-ss-get-link-button', '#SL_text_link']
+            for sel in seletores_botao:
+                try:
+                    btn = page.locator(sel).first
+                    btn.wait_for(state='visible', timeout=3000)
+                    btn.click()
+                    botao_ok = True
+                    break
+                except Exception:
+                    pass
 
         if not botao_ok:
+            print("       ⚠️  Botão 'Obter link' não encontrado.")
             return url_original
 
         time.sleep(2)
 
-        seletores_link = [
-            '#amzn-ss-text-shortlink-textarea',
-            '#SL_text_short_link',
-            'textarea[class*="shortlink"]',
-        ]
+        # Seletor do codegen do usuário: get_by_role("textbox", name="Generated short link")
+        try:
+            campo = page.get_by_role("textbox", name="Generated short link").first
+            campo.wait_for(state='visible', timeout=4000)
+            val = campo.get_attribute('value') or campo.input_value()
+            if val and ('amzn.to' in val or 'amazon.com.br' in val):
+                print(f"       ✅ Link afiliado capturado: {val[:40]}...")
+                return val
+        except Exception:
+            pass
+
+        # Fallback seletores antigos
+        seletores_link = ['#amzn-ss-text-shortlink-textarea', '#SL_text_short_link']
         for sel in seletores_link:
             try:
                 campo = page.locator(sel).first
                 campo.wait_for(state='visible', timeout=3000)
                 val = campo.get_attribute('value') or campo.input_value()
                 if val and ('amzn.to' in val or 'amazon.com.br' in val):
+                    print(f"       ✅ Link afiliado capturado: {val[:40]}...")
                     return val
             except Exception:
                 pass
 
+        print("       ⚠️  Não foi possível capturar o link curto. Usando original.")
         return url_original
     except Exception:
         return url_original
@@ -402,22 +437,28 @@ def main():
     print("  mminis — Buscador Amazon")
     print("=" * 55)
 
-    termo = input("\n🔍 Digite o termo de busca (ex: Hot Wheels): ").strip()
+    def gui_input(prompt, title="Amazon Search", initial=""):
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        res = simpledialog.askstring(title, prompt, initialvalue=initial)
+        root.destroy()
+        return res
+
+    termo = gui_input("🔍 Digite o termo de busca (ex: Hot Wheels):", "mminis — Amazon")
     if not termo:
-        print("Nenhum termo digitado. Encerrando.")
+        print("Cancelado ou nenhum termo digitado. Encerrando.")
         return
+    termo = termo.strip()
 
-    # opção de limite de preço
-    limite_str = input(f"💰 Preço máximo em R$ (Enter para usar {PRECO_MAXIMO:.0f}): ").strip()
-    limite = float(limite_str.replace(',', '.')) if limite_str else PRECO_MAXIMO
+    limite_str = gui_input(f"💰 Preço máximo em R$ (Vazio para {PRECO_MAXIMO:.0f}):", "Filtro de Preço", initial=str(int(PRECO_MAXIMO)))
+    limite = float(limite_str.replace(',', '.')) if limite_str and limite_str.strip() else PRECO_MAXIMO
 
-    # opção de quantidade
-    qtd_str = input(f"📦 Quantos produtos quer baixar? (Enter para usar {MAX_PRODUTOS}): ").strip()
-    qtd = int(qtd_str) if qtd_str.isdigit() and int(qtd_str) > 0 else MAX_PRODUTOS
+    qtd_str = gui_input(f"📦 Quantos produtos baixar? (Vazio para {MAX_PRODUTOS}):", "Quantidade", initial=str(MAX_PRODUTOS))
+    qtd = int(qtd_str) if qtd_str and qtd_str.isdigit() else MAX_PRODUTOS
 
-    # opção de vendas
-    min_vendas_str = input(f"⭐ Mínimo de vendas/avaliações (Enter para {MIN_VENDAS}): ").strip()
-    min_vendas = int(min_vendas_str) if min_vendas_str.isdigit() else MIN_VENDAS
+    min_vendas_str = gui_input(f"⭐ Mínimo de vendas/avaliações (Vazio para {MIN_VENDAS}):", "Filtro Social", initial=str(MIN_VENDAS))
+    min_vendas = int(min_vendas_str) if min_vendas_str and min_vendas_str.isdigit() else MIN_VENDAS
 
     print(f"\n🚀 Buscando '{termo}' · R$ {limite:.2f} · {qtd} produtos · min {min_vendas} vendas\n")
 
@@ -500,14 +541,22 @@ def main():
 
     # 3. Seleção final do usuário
     print("\n" + "="*55)
-    print(f"  📦 {len(produtos_novos)} PRODUTOS ENCONTRADOS")1
+    print(f"  📦 {len(produtos_novos)} PRODUTOS ENCONTRADOS")
     print("="*55)
     for idx, p in enumerate(produtos_novos, 1):
         vendas_txt = f"({p.get('vendas', 0)} vendas/aval)" if p.get('vendas') else ""
         print(f"  {idx:2d}. {p['nome'][:60]:60} | {p['preco']:10} {vendas_txt}")
     
     print("-" * 55)
-    excluir_str = input("\n🚫 Digite os números para EXCLUIR (ex: 1-5,7,12) ou Enter para manter todos: ").strip()
+    def gui_input(prompt, title="Excluir Produtos"):
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        res = simpledialog.askstring(title, prompt)
+        root.destroy()
+        return res
+
+    excluir_str = gui_input("🚫 Digite os números para EXCLUIR (ex: 1-5,7,12)\nou deixe em branco para manter todos:", "Refinar Lista")
     
     if excluir_str:
         try:
@@ -533,7 +582,7 @@ def main():
     # 4. Salva histórico
     save_history(history)
 
-    # 4. Merge inteligente com produtos.json
+    # 5. Merge inteligente com produtos.json
     n_outros, n_amazon_antigos, n_novos, n_total = salvar_merge(produtos_novos)
 
     # 5. Resumo
@@ -547,6 +596,22 @@ def main():
     print(f"  📄 Total no arquivo: {n_total} produtos")
     print(f"  💾 Arquivo salvo: {ARQUIVO_SAIDA}")
     print("=" * 55)
+
+    # 6. Enviar para Telegram
+    if produtos_novos:
+        print(f"📤 Enviando {len(produtos_novos)} itens para seu Telegram...")
+        for p in produtos_novos:
+            msg = (
+                f"🟡 <b>ACHADO AMAZON!</b>\n\n"
+                f"📦 <b>{p['nome'][:100]}</b>\n"
+                f"✅ Por: <b>{p['preco']}</b>\n"
+                f"📉 Desconto: <b>{p['desconto']}% OFF</b>\n"
+                f"⭐ Avaliação: {p['avaliacao']}\n\n"
+                f"🔗 <a href='{p['link']}'>COMPRAR AGORA</a>"
+            )
+            send_telegram_msg(msg, p.get('foto_url'))
+            time.sleep(1)
+
     print("\n📤 Próximo passo: faça upload do 'produtos.json' no GitHub.")
     print("   O site vai atualizar automaticamente em ~1 minuto.\n")
 

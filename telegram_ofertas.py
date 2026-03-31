@@ -29,12 +29,14 @@ from datetime import datetime
 from urllib.parse import quote_plus
 from playwright.sync_api import sync_playwright, Page
 from bs4 import BeautifulSoup
+import tkinter as tk
+from tkinter import simpledialog
 
 # =============================================
 # ⚙️  CONFIGURAÇÕES — EDITE AQUI
 # =============================================
-TELEGRAM_TOKEN  = "8748572165:AAF2mKNmurwRf4cV4vC4uJnUiG1nyR3zyjY"          # token do @BotFather
-TELEGRAM_CANAL  = "-1002962498795"       # ex: -1001234567890
+TELEGRAM_TOKEN  = "8748572165:AAF2mKNmurwRf4cV4vC4uJnUiG1nyR3zyjY"
+TELEGRAM_USER_ID = "792758999"
 
 # Critérios de seleção de ofertas
 DESCONTO_MINIMO = 0          # % mínimo de desconto para considerar
@@ -85,7 +87,7 @@ def telegram_send(texto: str, foto_url: str | None = None) -> bool:
     if foto_url:
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendPhoto"
         payload = {
-            "chat_id":    TELEGRAM_CANAL,
+            "chat_id":    TELEGRAM_USER_ID,
             "photo":      foto_url,
             "caption":    texto,
             "parse_mode": "HTML",
@@ -93,7 +95,7 @@ def telegram_send(texto: str, foto_url: str | None = None) -> bool:
     else:
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
         payload = {
-            "chat_id":    TELEGRAM_CANAL,
+            "chat_id":    TELEGRAM_USER_ID,
             "text":       texto,
             "parse_mode": "HTML",
             "disable_web_page_preview": False,
@@ -397,37 +399,45 @@ def _scrape_produto_amazon(page: Page, url: str) -> dict | None:
     }
 
 def _get_affiliate_amazon(page: Page, url: str) -> str:
-    """Tenta obter o link curto do SiteStrip da Amazon."""
+    """Tenta obter o link curto do SiteStrip da Amazon usando codegen do usuário."""
     try:
-        # Tenta clicar no botão 'Texto' do SiteStrip
-        seletores_botao = [
-            '#amzn-ss-get-link-button',
-            'button[title="Obter link"]',
-            '#SL_text_link',
-            'a[title="Texto"]'
-        ]
+        # Codegen do usuário: button "Obter link"
         botao_clicado = False
-        for sel in seletores_botao:
-            try:
-                btn = page.locator(sel).first
-                btn.wait_for(state='visible', timeout=4000)
-                btn.click()
-                botao_clicado = True
-                time.sleep(2)
-                break
-            except Exception:
-                pass
+        try:
+            btn = page.get_by_role("button", name="Obter link").first
+            btn.wait_for(state='visible', timeout=5000)
+            btn.click()
+            botao_clicado = True
+        except Exception:
+            # Fallback seletores antigos
+            seletores_botao = ['#amzn-ss-get-link-button', '#SL_text_link', 'a[title="Texto"]']
+            for sel in seletores_botao:
+                try:
+                    btn = page.locator(sel).first
+                    btn.wait_for(state='visible', timeout=3000)
+                    btn.click()
+                    botao_clicado = True
+                    break
+                except Exception:
+                    pass
         
         if not botao_clicado:
             return url
 
-        # Tenta capturar o link no textarea/input
-        seletores_link = [
-            '#amzn-ss-text-shortlink-textarea',
-            '#SL_text_short_link',
-            'textarea[class*="shortlink"]',
-            'input[id="amzn-ss-text-shortlink-textarea"]'
-        ]
+        time.sleep(2)
+
+        # Codegen do usuário: textbox "Generated short link"
+        try:
+            campo = page.get_by_role("textbox", name="Generated short link").first
+            campo.wait_for(state='visible', timeout=4000)
+            val = campo.get_attribute('value') or campo.input_value()
+            if val and ('amzn.to' in val or 'amazon.com.br' in val):
+                return val
+        except Exception:
+            pass
+
+        # Fallback seletores de captura antigos
+        seletores_link = ['#amzn-ss-text-shortlink-textarea', '#SL_text_short_link', 'textarea[class*="shortlink"]']
         for sel in seletores_link:
             try:
                 campo = page.locator(sel).first
@@ -606,37 +616,47 @@ def _scrape_produto_ml(page: Page, url: str) -> dict | None:
     }
 
 def _get_affiliate_ml(page: Page, url: str) -> str:
-    """Tenta obter o link do painel de afiliados do Mercado Livre."""
+    """Tenta obter o link do painel de afiliados do Mercado Livre usando codegen do usuário."""
     try:
-        # Tenta clicar no botão de gerar link do Hub de Afiliados
-        seletores_botao = [
-            'button[data-testid="get-link-button"]',
-            'button:has-text("Gerar link")',
-            'button:has-text("Obter link")',
-            '#affiliate-link-button',
-            '.ui-pdp-affiliate-link-button'
-        ]
-        for sel in seletores_botao:
-            try:
-                btn = page.locator(sel).first
-                btn.wait_for(state='visible', timeout=4000)
-                btn.click()
-                time.sleep(2.5)
-                break
-            except Exception:
-                pass
+        # Codegen do usuário: generate_link_button
+        botao_ok = False
+        try:
+            btn = page.get_by_test_id("generate_link_button").first
+            btn.wait_for(state='visible', timeout=5000)
+            btn.click()
+            botao_ok = True
+        except Exception:
+            # Fallback seletores antigos
+            seletores_botao = ['button[data-testid="get-link-button"]', 'button:has-text("Gerar link")']
+            for sel in seletores_botao:
+                try:
+                    btn = page.locator(sel).first
+                    btn.wait_for(state='visible', timeout=3000)
+                    btn.click()
+                    botao_ok = True
+                    break
+                except Exception:
+                    pass
 
-        # Tenta capturar o link gerado
-        seletores_input = [
-            'input[data-testid="affiliate-link-input"]',
-            'input[class*="affiliate"]',
-            'textarea[class*="affiliate"]',
-            '.ui-pdp-affiliate-link-input'
-        ]
+        if botao_ok:
+            time.sleep(2.5)
+
+        # Captura via codegen do usuário: text-field__label_link
+        try:
+            el = page.get_by_test_id("text-field__label_link").first
+            el.wait_for(state='visible', timeout=3000)
+            val = el.get_attribute('value') or el.input_value() or el.inner_text()
+            if val and 'mercadolivre' in val:
+                return val
+        except Exception:
+            pass
+
+        # Fallback seletores de captura antigos
+        seletores_input = ['input[data-testid="affiliate-link-input"]', 'input[class*="affiliate"]']
         for sel in seletores_input:
             try:
                 campo = page.locator(sel).first
-                campo.wait_for(state='visible', timeout=3000)
+                campo.wait_for(state='visible', timeout=3100)
                 val = campo.get_attribute('value') or campo.input_value()
                 if val and 'mercadolivre' in val:
                     return val
@@ -781,13 +801,19 @@ def main():
         print("   Edite o arquivo e insira seu token do @BotFather.\n")
         return
 
-    # ── MODO ─────────────────────────────────────────
-    print("\n🚀 O que deseja fazer hoje?")
-    print("  1. 🔍 Buscar novos produtos + 📨 Postar + 🌐 Salvar site")
-    print("  2. 🔍 Só buscar e salvar no site (sem postar)")
-    print("  3. 📨 Só postar no Telegram (usar produtos.json já existente)")
-    print("  4. 🔗 Só acessar links (Google Sheets) e postar no Telegram")
-    opcao = input("\nEscolha (1/2/3/4): ").strip()
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    prompt = (
+        "🚀 O que deseja fazer hoje?\n\n"
+        "1. 🔍 Buscar novos produtos + 📨 Postar + 🌐 Salvar site\n"
+        "2. 🔍 Só buscar e salvar no site (sem postar)\n"
+        "3. 📨 Só postar no Telegram (usar produtos.json já existente)\n"
+        "4. 🔗 Só acessar links (Google Sheets) e postar no Telegram\n\n"
+        "Escolha (1/2/3/4):"
+    )
+    opcao = simpledialog.askstring("Modo de Operação", prompt, initialvalue="1")
+    root.destroy()
 
     if opcao not in ['1', '2', '3', '4']:
         print("Opção inválida.")
@@ -807,8 +833,13 @@ def main():
         if not nao_postados:
             return
             
-        qtd_str = input(f"Quantos postar? (Enter = todos {len(nao_postados)}): ").strip()
-        qtd = int(qtd_str) if qtd_str.isdigit() else len(nao_postados)
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        qtd_str = simpledialog.askstring("Postar no Telegram", f"Quantos postar? (Total não postados: {len(nao_postados)})\nVazio = todos", initialvalue=str(len(nao_postados)))
+        root.destroy()
+        
+        qtd = int(qtd_str) if qtd_str and qtd_str.isdigit() else len(nao_postados)
         selecionados = nao_postados[:qtd]
         
         print(f"\n📨 Postando no Telegram ({INTERVALO_POSTS}s entre posts)...")
@@ -833,21 +864,24 @@ def main():
     termos_ml = []
     
     if opcao in ['1', '2']:
-        print("\n🔍 Configuração da busca:")
-        usar_google_prompt = input("🌐 Processar links do Google Sheets? (S/n): ").strip().lower()
-        usar_google = usar_google_prompt != 'n'
+        def gui_ask(prompt, title, initial=""):
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes("-topmost", True)
+            res = simpledialog.askstring(title, prompt, initialvalue=initial)
+            root.destroy()
+            return res
 
-        print("\n📦 Digite os termos para AMAZON (um por linha, Enter vazio para encerrar):")
-        while True:
-            t = input("  + ").strip()
-            if not t: break
-            termos_amazon.append(t)
+        usar_google_prompt = gui_ask("Processar links do Google Sheets? (s/n)", "Google Sheets", initial="s")
+        usar_google = (usar_google_prompt.lower() != 'n') if usar_google_prompt else True
 
-        print("\n🏷️  Digite os termos para MERCADO LIVRE (um por linha, Enter vazio para encerrar):")
-        while True:
-            t = input("  + ").strip()
-            if not t: break
-            termos_ml.append(t)
+        amz_res = gui_ask("Digite os termos para AMAZON separados por vírgula\n(ou deixe vazio para pular):", "Termos Amazon")
+        if amz_res:
+            termos_amazon = [t.strip() for t in amz_res.split(',') if t.strip()]
+
+        ml_res = gui_ask("Digite os termos para MERCADO LIVRE separados por vírgula\n(ou deixe vazio para pular):", "Termos ML")
+        if ml_res:
+            termos_ml = [t.strip() for t in ml_res.split(',') if t.strip()]
     
     # Se for opção 4, usar_google já é True e termos estão vazios, pronto.
 
@@ -861,14 +895,22 @@ def main():
     qtd_max = MAX_POR_BUSCA
     
     if opcao in ['1', '2']:
-        desc_str = input(f"\n📉 Desconto mínimo % (Enter = {DESCONTO_MINIMO}): ").strip()
-        desconto_min = int(desc_str) if desc_str.isdigit() else DESCONTO_MINIMO
+        def gui_ask(prompt, title, initial=""):
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes("-topmost", True)
+            res = simpledialog.askstring(title, prompt, initialvalue=initial)
+            root.destroy()
+            return res
 
-        preco_str = input(f"💰 Preço máximo R$ (Enter = {PRECO_MAXIMO:.0f}): ").strip()
-        preco_max = float(preco_str.replace(',', '.')) if preco_str else PRECO_MAXIMO
+        desc_str = gui_ask(f"📉 Desconto mínimo % (Vazio para {DESCONTO_MINIMO}):", "Filtro Desconto", initial=str(DESCONTO_MINIMO))
+        desconto_min = int(desc_str) if desc_str and desc_str.isdigit() else DESCONTO_MINIMO
 
-        qtd_str = input(f"📦 Máximo por termo (Enter = {MAX_POR_BUSCA}): ").strip()
-        qtd_max = int(qtd_str) if qtd_str.isdigit() else MAX_POR_BUSCA
+        preco_str = gui_ask(f"💰 Preço máximo R$ (Vazio para {PRECO_MAXIMO:.0f}):", "Filtro Preço", initial=str(int(PRECO_MAXIMO)))
+        preco_max = float(preco_str.replace(',', '.')) if preco_str and preco_str.strip() else PRECO_MAXIMO
+
+        qtd_max_str = gui_ask(f"📦 Máximo de produtos por termo (Vazio para {MAX_POR_BUSCA}):", "Limite Resultados", initial=str(MAX_POR_BUSCA))
+        qtd_max = int(qtd_max_str) if qtd_max_str and qtd_max_str.isdigit() else MAX_POR_BUSCA
 
     postar = (opcao in ['1', '4'])
 

@@ -14,9 +14,11 @@ from playwright.sync_api import sync_playwright
 TELEGRAM_TOKEN    = "8748572165:AAF2mKNmurwRf4cV4vC4uJnUiG1nyR3zyjY"
 TELEGRAM_USER_ID  = "792758999"
 WISHLIST_URL      = "https://www.amazon.com.br/hz/wishlist/ls/3VCIMEBP19W5X"
+ML_FAVORITOS_URL  = "https://myaccount.mercadolivre.com.br/bookmarks/list"
 ARQUIVO_HISTORICO = 'wishlist_history.json'
 ARQUIVO_SESSAO_AM = 'session.json'
-INTERVALO_MINUTOS = 45
+ARQUIVO_SESSAO_ML = 'session_ml.json'
+INTERVALO_MINUTOS = 90
 
 # ==============================================================================
 
@@ -66,6 +68,78 @@ def parse_price(texto: str) -> float | None:
 
 def format_price(valor: float) -> str:
     return f"R$ {valor:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+
+
+def _get_affiliate_amazon(page, url: str) -> str:
+    """Gera link de afiliado Amazon via SiteStripe (Codegen do usuário)."""
+    try:
+        print(f"     🔗 Gerando link de afiliado...")
+        page.goto(url, wait_until='domcontentloaded', timeout=45000)
+        time.sleep(1.5)
+
+        # Codegen: button "Obter link"
+        try:
+            btn = page.get_by_role("button", name="Obter link").first
+            btn.wait_for(state='visible', timeout=5000)
+            btn.click()
+            time.sleep(2)
+            
+            campo = page.get_by_role("textbox", name="Generated short link").first
+            campo.wait_for(state='visible', timeout=4000)
+            val = campo.get_attribute('value') or campo.input_value()
+            if val and ('amzn.to' in val or 'amazon.com' in val):
+                print(f"       ✅ Link capturado: {val[:30]}...")
+                return val
+        except Exception:
+            pass
+        
+        # Fallback seletores antigos
+        for sel in ['#amzn-ss-get-link-button', '#SL_text_link']:
+            try:
+                btn = page.locator(sel).first
+                btn.wait_for(state='visible', timeout=3000)
+                btn.click()
+                time.sleep(2)
+                
+                for fsel in ['#amzn-ss-text-shortlink-textarea', '#SL_text_short_link']:
+                    campo = page.locator(fsel).first
+                    if campo.count() > 0:
+                        val = campo.get_attribute('value') or campo.input_value()
+                        if val and 'amzn.to' in val:
+                            return val
+            except Exception:
+                pass
+                
+        print("     ⚠️  Usando link original.")
+        return url
+    except Exception:
+        return url
+
+
+def _get_affiliate_ml(page, url: str) -> str:
+    """Gera link de afiliado Mercado Livre (Codegen do usuário)."""
+    try:
+        print(f"     🔗 Gerando link de afiliado ML...")
+        # Usa o mesmo seletor que buscar_ml.py
+        try:
+            btn = page.get_by_test_id("generate_link_button").first
+            btn.wait_for(state='visible', timeout=5000)
+            btn.click()
+            time.sleep(2)
+            
+            el = page.locator('[data-testid="text-field__label_link"]').first
+            el.wait_for(state='visible', timeout=3000)
+            val = el.get_attribute('value') or el.input_value() or el.inner_text()
+            if val and 'mercadolivre.com' in val:
+                print(f"       ✅ Link capturado: {val[:30]}...")
+                return val
+        except Exception:
+            pass
+            
+        print("     ⚠️  Usando link original.")
+        return url
+    except Exception:
+        return url
 
 
 def load_history() -> dict:
@@ -239,6 +313,82 @@ def coletar_itens_da_lista(page) -> list[dict]:
     return itens
 
 
+def coletar_itens_ml(page) -> list[dict]:
+    """
+    Lê todos os itens dos favoritos do Mercado Livre.
+    """
+    print(f"  🌐 Acessando favoritos do Mercado Livre...")
+    page.goto(ML_FAVORITOS_URL, wait_until='domcontentloaded', timeout=60000)
+    time.sleep(2)
+
+    # Scroll para carregar favoritos
+    for _ in range(5):
+        page.mouse.wheel(0, 1500)
+        time.sleep(0.5)
+    time.sleep(1)
+
+    itens = []
+    # Seletores baseados em buscar_ml e estrutura comum de favoritos
+    cards = page.locator('div.ui-favorites-item, .ui-search-result, .poly-card').all()
+    print(f"  📋 {len(cards)} itens encontrados nos favoritos ML.")
+
+    for card in cards:
+        try:
+            # ── Link e ID ──────────────────
+            link_el = card.locator('a[href*="mercadolivre.com.br"]').first
+            url = link_el.get_attribute('href') or ''
+            if not url: continue
+            
+            # ID do produto no ML costuma estar na URL (MLB...)
+            match = re.search(r'(MLB-?\d+)', url)
+            item_id = match.group(1) if match else url.split('?')[0].split('/')[-1]
+            
+            # ── Título ──────────────────
+            titulo = ""
+            for t_sel in ['.ui-favorites-item__title', '.poly-component__title', 'h2']:
+                try:
+                    t = card.locator(t_sel).first.inner_text(timeout=1000).strip()
+                    if t:
+                        titulo = t
+                        break
+                except: continue
+            
+            # ── Preço ──────────────────
+            preco = None
+            preco_str = ""
+            try:
+                # Tenta fragmentos de preço (andes-money-amount)
+                frac = card.locator('.andes-money-amount__fraction').first.inner_text(timeout=1000).strip()
+                try:
+                    cents = card.locator('.andes-money-amount__cents').first.inner_text(timeout=500).strip()
+                except: cents = "00"
+                
+                preco_str = f"{frac},{cents}"
+                preco = parse_price(preco_str)
+            except:
+                # Fallback texto direto
+                try:
+                    txt = card.inner_text().replace('\n', ' ')
+                    m = re.search(r'R\$\s*([\d\.]+,?\d*)', txt)
+                    if m:
+                        preco_str = m.group(1)
+                        preco = parse_price(preco_str)
+                except: pass
+
+            itens.append({
+                'item_id': f"ml_{item_id}",
+                'titulo': titulo or f"Produto ML [{item_id}]",
+                'preco': preco,
+                'preco_str': preco_str,
+                'url_produto': url,
+                'plataforma': 'Mercado Livre'
+            })
+        except Exception as e:
+            print(f"     ⚠️ Erro ao processar card ML: {e}")
+
+    return itens
+
+
 def monitorar():
     print(f"\n{'=' * 60}")
     print(f"🚀 Wishlist Monitor — {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
@@ -247,7 +397,7 @@ def monitorar():
     history = load_history()
 
     with sync_playwright() as p:
-        browser = p.firefox.launch(headless=False)
+        browser = p.firefox.launch(headless=True)
         ctx_args: dict = {
             'user_agent': (
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) '
@@ -263,32 +413,63 @@ def monitorar():
         page    = context.new_page()
 
         try:
-            itens = coletar_itens_da_lista(page)
+            # --- COLETA AMAZON ---
+            itens_amz = []
+            if os.path.exists(ARQUIVO_SESSAO_AM):
+                try:
+                    itens_amz = coletar_itens_da_lista(page)
+                    for it in itens_amz: it['plataforma'] = 'Amazon'
+                except Exception as e:
+                    print(f"  ❌ Erro ao coletar Amazon: {e}")
+            
+            # --- COLETA MERCADO LIVRE ---
+            itens_ml = []
+            if os.path.exists(ARQUIVO_SESSAO_ML):
+                try:
+                    # Troca de contexto para carregar sessão ML
+                    context_ml = browser.new_context(
+                        storage_state=ARQUIVO_SESSAO_ML,
+                        user_agent=ctx_args['user_agent'],
+                        viewport=ctx_args['viewport']
+                    )
+                    page_ml = context_ml.new_page()
+                    itens_ml = coletar_itens_ml(page_ml)
+                    page_ml.close()
+                    context_ml.close()
+                except Exception as e:
+                    print(f"  ❌ Erro ao coletar Mercado Livre: {e}")
+            else:
+                print("  ⚠️ Sessão Mercado Livre não encontrada (session_ml.json).")
+
+            itens = itens_amz + itens_ml
 
             if not itens:
-                print("  ⚠️ Nenhum item encontrado. Verifique a sessão ou URL.")
+                print("  ⚠️ Nenhum item encontrado em nenhuma plataforma.")
                 return
 
-            print(f"\n  🔎 Analisando {len(itens)} itens...")
+            print(f"\n  🔎 Analisando {len(itens)} itens ({len(itens_amz)} Amz, {len(itens_ml)} ML)...")
 
             for i, item in enumerate(itens, 1):
                 item_id     = item['item_id']
+                # Garante prefixo se não tiver (compatibilidade com histórico antigo)
+                if not item_id.startswith('ml_') and item.get('plataforma') == 'Amazon' and not item_id.startswith('amz_'):
+                    item_id = f"amz_{item_id}"
+                
                 titulo      = item['titulo']
                 preco_now   = item['preco']
                 url_produto = item['url_produto']
+                plat        = item.get('plataforma', 'Amazon')
 
-                print(f"\n  [{i}/{len(itens)}] {titulo[:70]}")
+                print(f"\n  [{i}/{len(itens)}] [{plat}] {titulo[:70]}")
                 print(f"       Preço atual: {item['preco_str'] or '(não encontrado)'}")
 
-                # ── Sem preço → verificar disponibilidade ─────────────────
+                # ── Sem preço → verificar disponibilidade (Só Amazon por enquanto) ──
                 if preco_now is None:
-                    disponivel = False
-                    if url_produto:
+                    if plat == 'Amazon' and url_produto:
                         print(f"     🔍 Abrindo página para verificar disponibilidade...")
                         indisponivel = verificar_indisponivel(page, url_produto)
                         if indisponivel:
                             print(f"     ❌ Item indisponível na Amazon.")
-                            # Registra / mantém no histórico como indisponível
                             if item_id in history:
                                 history[item_id]['indisponivel'] = True
                             else:
@@ -296,24 +477,26 @@ def monitorar():
                                     'titulo'        : titulo,
                                     'preco'         : None,
                                     'indisponivel'  : True,
+                                    'plataforma'    : plat,
                                     'data_registro' : datetime.now().isoformat(),
                                 }
                         else:
                             print(f"     ⚠️ Preço não localizado (mas pode estar disponível).")
                     else:
-                        print(f"     ⚠️ Sem URL do produto — não é possível verificar.")
+                        print(f"     ⚠️ Preço não localizado.")
                     continue
 
-                # ── Com preço → análise fria vs histórico ─────────────────
+                # ── Com preço → análise vs histórico ─────────────────
                 if item_id in history:
                     registro   = history[item_id]
                     old_price  = registro.get('preco')
 
-                    # Atualiza histórico com preço atual
+                    # Atualiza histórico
                     history[item_id].update({
                         'titulo'        : titulo,
                         'preco'         : preco_now,
                         'indisponivel'  : False,
+                        'plataforma'    : plat,
                         'ultima_coleta' : datetime.now().isoformat(),
                     })
 
@@ -321,8 +504,27 @@ def monitorar():
                         reducao = old_price - preco_now
                         pct     = (reducao / old_price) * 100
 
+                        print(f"     🔥 BAIXOU! {format_price(old_price)} → {format_price(preco_now)}")
+                        
+                        # Gera link de afiliado
+                        if plat == 'Amazon':
+                            link_final = _get_affiliate_amazon(page, url_produto)
+                            btn_text = "COMPRAR NA AMAZON"
+                            emoji = "💎"
+                        else:
+                            # Para ML, precisamos reabrir a página no contexto ML para gerar link
+                            # ou apenas usar o link original se simplificar. 
+                            # Vamos tentar gerar se possível (exige contexto com sessão)
+                            context_ml = browser.new_context(storage_state=ARQUIVO_SESSAO_ML, **ctx_args)
+                            p_ml = context_ml.new_page()
+                            link_final = _get_affiliate_ml(p_ml, url_produto)
+                            p_ml.close()
+                            context_ml.close()
+                            btn_text = "COMPRAR NO MERCADO LIVRE"
+                            emoji = "🔵"
+
                         msg = (
-                            "💎 <b>OFERTA ENCONTRADA!</b>\n"
+                            f"{emoji} <b>OFERTA ENCONTRADA!</b>\n"
                             "───────────────────\n"
                             f"📦 <b>{titulo}</b>\n\n"
                             f"📉 <b>Queda detectada:</b>\n"
@@ -330,30 +532,29 @@ def monitorar():
                             f"✅ Por: <b>{format_price(preco_now)}</b>\n\n"
                             f"🔥 <b>Economia de {format_price(reducao)} ({pct:.1f}% OFF)</b>\n"
                             "───────────────────\n"
-                            f"🔗 <a href='{url_produto}'>COMPRAR NA AMAZON</a>"
+                            f"🔗 <a href='{link_final}'>{btn_text}</a>"
                         )
 
-                        print(f"     🔥 BAIXOU! {format_price(old_price)} → {format_price(preco_now)}")
                         send_personal_msg(msg)
 
                     elif old_price is not None and preco_now > old_price:
                         print(f"     📈 Subiu: {format_price(old_price)} → {format_price(preco_now)}")
-
                     else:
                         print(f"     ✅ Preço estável: {format_price(preco_now)}")
 
                 else:
-                    # Primeiro registro deste item
+                    # Novo registro
                     history[item_id] = {
                         'titulo'        : titulo,
                         'preco'         : preco_now,
                         'indisponivel'  : False,
+                        'plataforma'    : plat,
                         'data_registro' : datetime.now().isoformat(),
                         'ultima_coleta' : datetime.now().isoformat(),
                     }
                     print(f"     ✅ Novo item registrado: {format_price(preco_now)}")
 
-                time.sleep(0.8)
+                time.sleep(0.5)
 
             save_history(history)
             print(f"\n  ✅ Feito! Próxima verificação em {INTERVALO_MINUTOS} min.")
