@@ -18,7 +18,9 @@ ML_FAVORITOS_URL  = "https://myaccount.mercadolivre.com.br/bookmarks/list"
 ARQUIVO_HISTORICO = 'wishlist_history.json'
 ARQUIVO_SESSAO_AM = 'session.json'
 ARQUIVO_SESSAO_ML = 'session_ml.json'
-INTERVALO_MINUTOS = 90
+INTERVALO_MINUTOS = 120
+THRESHOLD_PCT     = 2.0
+ARQUIVO_SUMMARY   = 'last_summary.txt'
 
 # ==============================================================================
 
@@ -140,6 +142,55 @@ def _get_affiliate_ml(page, url: str) -> str:
         return url
     except Exception:
         return url
+
+
+def enviar_resumo_diario(history: dict):
+    """Envia uma lista de todos os itens sendo monitorados."""
+    try:
+        agora = datetime.now()
+        data_hoje = agora.strftime('%Y-%m-%d')
+        
+        # Só envia se for 9h da manhã (ou depois) e ainda não enviou hoje
+        if agora.hour < 9:
+            return
+
+        if os.path.exists(ARQUIVO_SUMMARY):
+            with open(ARQUIVO_SUMMARY, 'r') as f:
+                if f.read().strip() == data_hoje:
+                    return
+
+        print("\n📅 Gerando resumo diário de monitoramento...")
+        
+        itens_amz = [v for k, v in history.items() if v.get('plataforma') == 'Amazon']
+        itens_ml  = [v for k, v in history.items() if v.get('plataforma') == 'Mercado Livre']
+        
+        msg = f"🌅 <b>BOM DIA! RESUMO DE MONITORAMENTO</b>\n{agora.strftime('%d/%m/%Y %H:%M')}\n"
+        msg += "───────────────────\n\n"
+        
+        if itens_amz:
+            msg += f"🛒 <b>AMAZON ({len(itens_amz)} itens):</b>\n"
+            for it in itens_amz:
+                status = "❌ Indisponível" if it.get('indisponivel') else format_price(it.get('preco', 0))
+                msg += f"• {it['titulo'][:40]}...: <b>{status}</b>\n"
+            msg += "\n"
+            
+        if itens_ml:
+            msg += f"🔵 <b>MERCADO LIVRE ({len(itens_ml)} itens):</b>\n"
+            for it in itens_ml:
+                status = format_price(it.get('preco', 0)) if it.get('preco') else "❓ s/ preço"
+                msg += f"• {it['titulo'][:40]}...: <b>{status}</b>\n"
+        
+        if not itens_amz and not itens_ml:
+            msg += "⚠️ Ninguém sendo monitorado no momento."
+
+        ok = send_personal_msg(msg)
+        if ok:
+            with open(ARQUIVO_SUMMARY, 'w') as f:
+                f.write(data_hoje)
+            print("  ✅ Resumo diário enviado!")
+
+    except Exception as e:
+        print(f"  ⚠️ Erro ao enviar resumo diário: {e}")
 
 
 def load_history() -> dict:
@@ -395,6 +446,7 @@ def monitorar():
     print(f"{'=' * 60}")
 
     history = load_history()
+    enviar_resumo_diario(history)
 
     with sync_playwright() as p:
         browser = p.firefox.launch(headless=True)
@@ -449,6 +501,7 @@ def monitorar():
 
             print(f"\n  🔎 Analisando {len(itens)} itens ({len(itens_amz)} Amz, {len(itens_ml)} ML)...")
 
+            itens_baixaram = []
             for i, item in enumerate(itens, 1):
                 item_id     = item['item_id']
                 # Garante prefixo se não tiver (compatibilidade com histórico antigo)
@@ -504,38 +557,73 @@ def monitorar():
                         reducao = old_price - preco_now
                         pct     = (reducao / old_price) * 100
 
+                        if pct < THRESHOLD_PCT:
+                            print(f"     ✅ Queda ignorada ({pct:.2f}% < {THRESHOLD_PCT}%: centavos/variação mínima)")
+                            # Mesmo assim atualiza o preço no histórico para acompanhar a variação
+                            history[item_id].update({
+                                'titulo'        : titulo,
+                                'preco'         : preco_now,
+                                'plataforma'    : plat,
+                                'ultima_coleta' : datetime.now().isoformat(),
+                            })
+                            continue
+
                         print(f"     🔥 BAIXOU! {format_price(old_price)} → {format_price(preco_now)}")
                         
-                        # Gera link de afiliado
-                        if plat == 'Amazon':
-                            link_final = _get_affiliate_amazon(page, url_produto)
-                            btn_text = "COMPRAR NA AMAZON"
-                            emoji = "💎"
-                        else:
-                            # Para ML, precisamos reabrir a página no contexto ML para gerar link
-                            # ou apenas usar o link original se simplificar. 
-                            # Vamos tentar gerar se possível (exige contexto com sessão)
-                            context_ml = browser.new_context(storage_state=ARQUIVO_SESSAO_ML, **ctx_args)
-                            p_ml = context_ml.new_page()
-                            link_final = _get_affiliate_ml(p_ml, url_produto)
-                            p_ml.close()
-                            context_ml.close()
-                            btn_text = "COMPRAR NO MERCADO LIVRE"
-                            emoji = "🔵"
+                        try:
+                            # Tenta gerar link de afiliado e mensagem completa
+                            link_final = url_produto
+                            btn_text   = "COMPRAR"
+                            emoji      = "💎" if plat == 'Amazon' else "🔵"
 
-                        msg = (
-                            f"{emoji} <b>OFERTA ENCONTRADA!</b>\n"
-                            "───────────────────\n"
-                            f"📦 <b>{titulo}</b>\n\n"
-                            f"📉 <b>Queda detectada:</b>\n"
-                            f"❌ De: <s>{format_price(old_price)}</s>\n"
-                            f"✅ Por: <b>{format_price(preco_now)}</b>\n\n"
-                            f"🔥 <b>Economia de {format_price(reducao)} ({pct:.1f}% OFF)</b>\n"
-                            "───────────────────\n"
-                            f"🔗 <a href='{link_final}'>{btn_text}</a>"
-                        )
+                            if plat == 'Amazon':
+                                link_final = _get_affiliate_amazon(page, url_produto)
+                                btn_text = "COMPRAR NA AMAZON"
+                            else:
+                                context_ml = browser.new_context(
+                                    storage_state=ARQUIVO_SESSAO_ML,
+                                    user_agent=ctx_args.get('user_agent'),
+                                    viewport=ctx_args.get('viewport')
+                                )
+                                p_ml = context_ml.new_page()
+                                try:
+                                    link_final = _get_affiliate_ml(p_ml, url_produto)
+                                finally:
+                                    p_ml.close()
+                                    context_ml.close()
+                                btn_text = "COMPRAR NO MERCADO LIVRE"
 
-                        send_personal_msg(msg)
+                            msg = (
+                                f"{emoji} <b>OFERTA ENCONTRADA!</b>\n"
+                                "───────────────────\n"
+                                f"📦 <b>{titulo}</b>\n\n"
+                                f"📉 <b>Queda detectada:</b>\n"
+                                f"❌ De: <s>{format_price(old_price)}</s>\n"
+                                f"✅ Por: <b>{format_price(preco_now)}</b>\n\n"
+                                f"🔥 <b>Economia de {format_price(reducao)} ({pct:.1f}% OFF)</b>\n"
+                                "───────────────────\n"
+                                f"🔗 <a href='{link_final}'>{btn_text}</a>"
+                            )
+                            send_personal_msg(msg)
+
+                        except Exception as e_alert:
+                            print(f"     ⚠️ Erro ao gerar alerta detalhado: {e_alert}. Enviando fallback básico.")
+                            # Fallback básico: apenas dados essenciais sem link de afiliado "limpo"
+                            msg_fallback = (
+                                f"⚠️ <b>BAIXOU DE PREÇO (ALERTA BÁSICO)</b>\n"
+                                f"📦 {titulo}\n"
+                                f"💰 {format_price(old_price)} → <b>{format_price(preco_now)}</b>\n"
+                                f"🔗 <a href='{url_produto}'>ABRIR PRODUTO</a>"
+                            )
+                            send_personal_msg(msg_fallback)
+
+                        # Adiciona à relação para o resumo final
+                        itens_baixaram.append({
+                            'titulo': titulo,
+                            'de': old_price,
+                            'por': preco_now,
+                            'plat': plat
+                        })
 
                     elif old_price is not None and preco_now > old_price:
                         print(f"     📈 Subiu: {format_price(old_price)} → {format_price(preco_now)}")
@@ -557,6 +645,19 @@ def monitorar():
                 time.sleep(0.5)
 
             save_history(history)
+
+            # --- RESUMO FINAL (Fallback de Redação) ---
+            if itens_baixaram:
+                print(f"  📝 Enviando resumo de {len(itens_baixaram)} quedas detectedas...")
+                summary = "📋 <b>RESUMO DE QUEDAS (Rodada Atual)</b>\n"
+                summary += "───────────────────\n"
+                for alert in itens_baixaram:
+                    p_de  = format_price(alert['de'])
+                    p_por = format_price(alert['por'])
+                    summary += f"• <b>[{alert['plat']}]</b> {alert['titulo'][:40]}...\n  <s>{p_de}</s> ➔ <b>{p_por}</b>\n\n"
+                
+                send_personal_msg(summary)
+
             print(f"\n  ✅ Feito! Próxima verificação em {INTERVALO_MINUTOS} min.")
 
         except Exception as e:
