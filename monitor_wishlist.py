@@ -446,7 +446,6 @@ def monitorar():
     print(f"{'=' * 60}")
 
     history = load_history()
-    enviar_resumo_diario(history)
 
     with sync_playwright() as p:
         browser = p.firefox.launch(headless=True)
@@ -467,15 +466,18 @@ def monitorar():
         try:
             # --- COLETA AMAZON ---
             itens_amz = []
+            amz_success = False
             if os.path.exists(ARQUIVO_SESSAO_AM):
                 try:
                     itens_amz = coletar_itens_da_lista(page)
                     for it in itens_amz: it['plataforma'] = 'Amazon'
+                    amz_success = True
                 except Exception as e:
                     print(f"  ❌ Erro ao coletar Amazon: {e}")
             
             # --- COLETA MERCADO LIVRE ---
             itens_ml = []
+            ml_success = False
             if os.path.exists(ARQUIVO_SESSAO_ML):
                 try:
                     # Troca de contexto para carregar sessão ML
@@ -486,6 +488,7 @@ def monitorar():
                     )
                     page_ml = context_ml.new_page()
                     itens_ml = coletar_itens_ml(page_ml)
+                    ml_success = True
                     page_ml.close()
                     context_ml.close()
                 except Exception as e:
@@ -502,11 +505,14 @@ def monitorar():
             print(f"\n  🔎 Analisando {len(itens)} itens ({len(itens_amz)} Amz, {len(itens_ml)} ML)...")
 
             itens_baixaram = []
+            ids_vistos = set()
             for i, item in enumerate(itens, 1):
                 item_id     = item['item_id']
                 # Garante prefixo se não tiver (compatibilidade com histórico antigo)
                 if not item_id.startswith('ml_') and item.get('plataforma') == 'Amazon' and not item_id.startswith('amz_'):
                     item_id = f"amz_{item_id}"
+                
+                ids_vistos.add(item_id)
                 
                 titulo      = item['titulo']
                 preco_now   = item['preco']
@@ -644,7 +650,27 @@ def monitorar():
 
                 time.sleep(0.5)
 
+            # --- LIMPEZA DE REMOVIDOS ---
+            removidos = 0
+            keys_to_delete = []
+            for k, v in list(history.items()):
+                plat = v.get('plataforma')
+                if plat == 'Amazon' and amz_success:
+                    if k not in ids_vistos:
+                        keys_to_delete.append(k)
+                elif plat == 'Mercado Livre' and ml_success:
+                    if k not in ids_vistos:
+                        keys_to_delete.append(k)
+            
+            for k in keys_to_delete:
+                del history[k]
+                removidos += 1
+            
+            if removidos > 0:
+                print(f"  🧹 Removidos {removidos} itens que não estão mais nos favoritos.")
+
             save_history(history)
+            enviar_resumo_diario(history)
 
             # --- RESUMO FINAL (Fallback de Redação) ---
             if itens_baixaram:
